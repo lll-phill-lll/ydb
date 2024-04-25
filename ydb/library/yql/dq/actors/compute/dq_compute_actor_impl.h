@@ -447,7 +447,7 @@ protected:
         }
 
         {
-            auto guard = BindAllocator(); // Source/Sink could destroy mkql values inside PassAway, which requires allocator to be bound
+            auto guard = MaybeBindAllocator(); // Source/Sink could destroy mkql values inside PassAway, which requires allocator to be bound
 
             for (auto& [_, source] : SourcesMap) {
                 if (source.Actor) {
@@ -955,8 +955,12 @@ protected:
         TerminateSources(TIssues({TIssue(message)}), success);
     }
 
-    TGuard<NKikimr::NMiniKQL::TScopedAlloc> BindAllocator() {
-        return Guard(GetAllocator());
+    virtual TGuard<NKikimr::NMiniKQL::TScopedAlloc> BindAllocator() {
+        return TaskRunner->BindAllocator();
+    }
+
+    virtual std::optional<TGuard<NKikimr::NMiniKQL::TScopedAlloc>> MaybeBindAllocator() {
+        return TaskRunner->BindAllocator();
     }
 
     virtual bool SayHelloOnBootstrap() {
@@ -1276,7 +1280,7 @@ protected:
                         .TypeEnv = typeEnv,
                         .HolderFactory = holderFactory,
                         .TaskCounters = TaskCounters,
-                        .Alloc = Alloc,
+                        .Alloc = TaskRunner ? Alloc : nullptr,
                         .MemoryQuotaManager = MemoryLimits.MemoryQuotaManager,
                         .SourceSettings = (!settings.empty() ? settings.at(inputIndex) : nullptr),
                         .Arena = Task.GetArena(),
