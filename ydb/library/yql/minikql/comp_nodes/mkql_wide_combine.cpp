@@ -8,6 +8,7 @@
 #include <ydb/library/yql/minikql/computation/mkql_spiller.h>
 #include <ydb/library/yql/minikql/mkql_node_builder.h>
 #include <ydb/library/yql/minikql/mkql_node_cast.h>
+#include <ydb/library/yql/minikql/mkql_program_builder.h>
 #include <ydb/library/yql/minikql/mkql_runtime_version.h>
 #include <ydb/library/yql/minikql/mkql_stats_registry.h>
 #include <ydb/library/yql/minikql/defs.h>
@@ -710,9 +711,7 @@ private:
     }
 
     bool IsSwitchToSpillingModeCondition() const {
-        return false;
-        // TODO: YQL-18033
-        // return !HasMemoryForProcessing();
+        return !HasMemoryForProcessing();
     }
 
 public:
@@ -1733,12 +1732,11 @@ IComputationNode* WrapWideCombiner(TCallable& callable, const TComputationNodeFa
 }
 
 IComputationNode* WrapWideLastCombiner(TCallable& callable, const TComputationNodeFactoryContext& ctx) {
-    YQL_LOG(INFO) << "Found non-serializable type, spilling is disabled";
-    return WrapWideCombinerT<true>(callable, ctx, false);
-}
-
-IComputationNode* WrapWideLastCombinerWithSpilling(TCallable& callable, const TComputationNodeFactoryContext& ctx) {
-    return WrapWideCombinerT<true>(callable, ctx, true);
+    bool allowSpilling = HasSpillingFlag(callable);
+    if (allowSpilling) {
+        YQL_LOG(INFO) << "Found non-serializable type, spilling is disabled";
+    }
+    return WrapWideCombinerT<true>(callable, ctx, allowSpilling);
 }
 
 }

@@ -4816,14 +4816,6 @@ TRuntimeNode TProgramBuilder::WideLastCombiner(TRuntimeNode flow, const TWideLam
     return WideLastCombinerCommon(__func__, flow, extractor, init, update, finish);
 }
 
-TRuntimeNode TProgramBuilder::WideLastCombinerWithSpilling(TRuntimeNode flow, const TWideLambda& extractor, const TBinaryWideLambda& init, const TTernaryWideLambda& update, const TBinaryWideLambda& finish) {
-    if constexpr (RuntimeVersion < 49U) {
-        THROW yexception() << "Runtime version (" << RuntimeVersion << ") too old for " << __func__;
-    }
-
-    return WideLastCombinerCommon(__func__, flow, extractor, init, update, finish);
-}
-
 TRuntimeNode TProgramBuilder::WideCondense1(TRuntimeNode flow, const TWideLambda& init, const TWideSwitchLambda& switcher, const TBinaryWideLambda& update, bool useCtx) {
     if constexpr (RuntimeVersion < 18U) {
         THROW yexception() << "Runtime version (" << RuntimeVersion << ") too old for " << __func__;

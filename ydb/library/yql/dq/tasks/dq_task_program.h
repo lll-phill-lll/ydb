@@ -24,6 +24,10 @@ public:
         return Mask & ui64(TDqConfiguration::EEnabledSpillingNodes::GraceJoin);
     }
 
+    bool IsWideCombinerSpillingEnabled() const {
+        return Mask & ui64(TDqConfiguration::EEnabledSpillingNodes::WideCombiner);
+    }
+
 private:
     const ui64 Mask = 0;
 };

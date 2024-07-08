@@ -29,8 +29,9 @@ struct TDqSettings {
     };
 
     enum class EEnabledSpillingNodes : ui64 {
-        GraceJoin   = 1ULL      /* "GraceJoin" */,
-        All         = ~0ULL     /* "All" */,
+        GraceJoin       = 1ULL      /* "GraceJoin" */,
+        WideCombiner    = 2ULL      /* "WideCombiner" */,
+        All             = ~0ULL     /* "All" */,
     };
 
     struct TDefault {
