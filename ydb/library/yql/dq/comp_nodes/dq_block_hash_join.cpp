@@ -1,3 +1,4 @@
+
 #include "dq_block_hash_join.h"
 
 #include <yql/essentials/minikql/computation/mkql_block_builder.h>
@@ -10,6 +11,9 @@
 
 // Include block infrastructure from BlockMapJoinCore
 #include <yql/essentials/minikql/comp_nodes/mkql_blocks.h>
+
+#include <algorithm>
+#include <arrow/scalar.h>
 
 namespace NKikimr::NMiniKQL {
 
@@ -49,7 +53,9 @@ public:
             RightKeyColumns_,
             std::move(LeftStream_->GetValue(ctx)),
             std::move(RightStream_->GetValue(ctx)),
-            ResultItemTypes_
+            ResultItemTypes_,
+            LeftItemTypes_.size(),   // Left stream width  
+            RightItemTypes_.size()   // Right stream width
         );
     }
 
@@ -65,7 +71,9 @@ private:
             const TVector<ui32>&    rightKeyColumns,
             NUdf::TUnboxedValue&&   leftStream,
             NUdf::TUnboxedValue&&   rightStream,
-            const TVector<TType*>&  resultItemTypes
+            const TVector<TType*>&  resultItemTypes,
+            size_t                  leftStreamWidth,
+            size_t                  rightStreamWidth
         )
             : TBase(memInfo)
             , LeftKeyColumns_(leftKeyColumns)
@@ -74,44 +82,156 @@ private:
             , RightStream_(std::move(rightStream))
             , HolderFactory_(holderFactory)
             , ResultItemTypes_(resultItemTypes)
+            , LeftStreamWidth_(leftStreamWidth)
+            , RightStreamWidth_(rightStreamWidth)
         { }
 
     private:
         NUdf::EFetchStatus WideFetch(NUdf::TUnboxedValue* output, ui32 width) override {
-            // Simple implementation: just return empty result for now as a placeholder
-            // This avoids the complex TBlockState logic that's causing problems
+            Y_DEBUG_ABORT_UNLESS(width == ResultItemTypes_.size());
             
-            MKQL_ENSURE(width == ResultItemTypes_.size(), "Width mismatch");
+            Cerr << "WideFetch called: width=" << width 
+                 << " leftWidth=" << LeftStreamWidth_ 
+                 << " rightWidth=" << RightStreamWidth_
+                 << " leftFinished=" << LeftFinished_
+                 << " rightFinished=" << RightFinished_ << Endl;
             
-            // Create empty blocks for each output column
-            for (size_t i = 0; i < width; i++) {
-                if (i == width - 1) {
-                    // Last column is block length
-                    output[i] = HolderFactory_.CreateArrowBlock(arrow::Datum(std::make_shared<arrow::UInt64Scalar>(0)));
-                } else {
-                    // Create empty array for this column type using Arrow's MakeArrayOfNull
-                    auto blockItemType = AS_TYPE(TBlockType, ResultItemTypes_[i])->GetItemType();
+            // Simple concatenation logic: read left stream first, then right stream
+            
+            if (!LeftFinished_) {
+                // Try to read from left stream with correct width
+                TVector<NUdf::TUnboxedValue> leftInput(LeftStreamWidth_);
+                Cerr << "Trying to read left stream with width " << LeftStreamWidth_ << Endl;
+                auto status = LeftStream_.WideFetch(leftInput.data(), LeftStreamWidth_);
+                Cerr << "Left stream status: " << (int)status << Endl;
+                
+                switch (status) {
+                case NUdf::EFetchStatus::Ok: {
+                    Cerr << "Left stream read successful!" << Endl;
+                    // Copy left stream data to output (assuming same structure for now)
+                    // For proper join, we would need to map columns correctly
                     
-                    std::shared_ptr<arrow::DataType> arrowType;
-                    MKQL_ENSURE(ConvertArrowType(blockItemType, arrowType), "Failed to convert type to arrow");
+                    // First, copy all elements except the last one (block length)
+                    size_t dataCols = std::min(static_cast<size_t>(width), LeftStreamWidth_) - 1;
+                    for (size_t i = 0; i < dataCols; i++) {
+                        Cerr << "Copying leftInput[" << i << "] IsBoxed=" << leftInput[i].IsBoxed() 
+                             << " IsSpecial=" << leftInput[i].IsSpecial()
+                             << " IsInvalid=" << leftInput[i].IsInvalid() << Endl;
+                        try {
+                            output[i] = std::move(leftInput[i]);
+                            Cerr << "Successfully copied leftInput[" << i << "]" << Endl;
+                        } catch (const std::exception& e) {
+                            Cerr << "Exception copying leftInput[" << i << "]: " << e.what() << Endl;
+                            throw;
+                        }
+                    }
                     
-                    auto emptyArray = arrow::MakeArrayOfNull(arrowType, 0);
-                    ARROW_OK(emptyArray.status());
+                    // Copy block length to the last position in output
+                    if (width > 0) {
+                        size_t blockLengthSrcIdx = LeftStreamWidth_ - 1;
+                        size_t blockLengthDstIdx = width - 1;
+                        Cerr << "Copying block length from leftInput[" << blockLengthSrcIdx << "] to output[" << blockLengthDstIdx << "] IsBoxed=" 
+                             << leftInput[blockLengthSrcIdx].IsBoxed() 
+                             << " IsEmpty=" << !leftInput[blockLengthSrcIdx]
+                             << " IsEmbedded=" << leftInput[blockLengthSrcIdx].IsEmbedded() << Endl;
+                        
+                        output[blockLengthDstIdx] = std::move(leftInput[blockLengthSrcIdx]);
+                    }
                     
-                    output[i] = HolderFactory_.CreateArrowBlock(arrow::Datum(emptyArray.ValueOrDie()));
+                    // Fill remaining middle columns if output is wider than left stream
+                    for (size_t i = dataCols; i < width - 1; i++) {
+                        // Create empty array for additional columns
+                        Cerr << "Creating empty array for output[" << i << "]" << Endl;
+                        auto blockItemType = AS_TYPE(TBlockType, ResultItemTypes_[i])->GetItemType();
+                        std::shared_ptr<arrow::DataType> arrowType;
+                        MKQL_ENSURE(ConvertArrowType(blockItemType, arrowType), "Failed to convert type to arrow");
+                        auto emptyArray = arrow::MakeArrayOfNull(arrowType, 0);
+                        ARROW_OK(emptyArray.status());
+                        output[i] = HolderFactory_.CreateArrowBlock(arrow::Datum(emptyArray.ValueOrDie()));
+                    }
+                    return NUdf::EFetchStatus::Ok;
+                }
+                    
+                case NUdf::EFetchStatus::Yield:
+                    return NUdf::EFetchStatus::Yield;
+                    
+                case NUdf::EFetchStatus::Finish:
+                    Cerr << "Left stream finished!" << Endl;
+                    LeftFinished_ = true;
+                    break;
                 }
             }
             
+            if (!RightFinished_) {
+                // Try to read from right stream with correct width
+                TVector<NUdf::TUnboxedValue> rightInput(RightStreamWidth_);
+                auto status = RightStream_.WideFetch(rightInput.data(), RightStreamWidth_);
+                
+                switch (status) {
+                case NUdf::EFetchStatus::Ok: {
+                    Cerr << "Right stream read successful!" << Endl;
+                    // Copy right stream data to output (assuming same structure for now)
+                    
+                    // First, copy all elements except the last one (block length)
+                    size_t dataCols = std::min(static_cast<size_t>(width), RightStreamWidth_) - 1;
+                    for (size_t i = 0; i < dataCols; i++) {
+                        Cerr << "Copying rightInput[" << i << "] IsBoxed=" << rightInput[i].IsBoxed() << Endl;
+                        output[i] = std::move(rightInput[i]);
+                    }
+                    
+                    // Copy block length to the last position in output
+                    if (width > 0) {
+                        size_t blockLengthSrcIdx = RightStreamWidth_ - 1;
+                        size_t blockLengthDstIdx = width - 1;
+                        Cerr << "Copying block length from rightInput[" << blockLengthSrcIdx << "] to output[" << blockLengthDstIdx << "] IsBoxed=" 
+                             << rightInput[blockLengthSrcIdx].IsBoxed() 
+                             << " IsEmpty=" << !rightInput[blockLengthSrcIdx]
+                             << " IsEmbedded=" << rightInput[blockLengthSrcIdx].IsEmbedded() << Endl;
+                        
+                        output[blockLengthDstIdx] = std::move(rightInput[blockLengthSrcIdx]);
+                    }
+                    
+                    // Fill remaining middle columns if output is wider than right stream
+                    for (size_t i = dataCols; i < width - 1; i++) {
+                        // Create empty array for additional columns
+                        Cerr << "Creating empty array for output[" << i << "]" << Endl;
+                        auto blockItemType = AS_TYPE(TBlockType, ResultItemTypes_[i])->GetItemType();
+                        std::shared_ptr<arrow::DataType> arrowType;
+                        MKQL_ENSURE(ConvertArrowType(blockItemType, arrowType), "Failed to convert type to arrow");
+                        auto emptyArray = arrow::MakeArrayOfNull(arrowType, 0);
+                        ARROW_OK(emptyArray.status());
+                        output[i] = HolderFactory_.CreateArrowBlock(arrow::Datum(emptyArray.ValueOrDie()));
+                    }
+                    return NUdf::EFetchStatus::Ok;
+                }
+                    
+                case NUdf::EFetchStatus::Yield:
+                    return NUdf::EFetchStatus::Yield;
+                    
+                case NUdf::EFetchStatus::Finish:
+                    Cerr << "Right stream finished!" << Endl;
+                    RightFinished_ = true;
+                    break;
+                }
+            }
+            
+            // Both streams finished
+            Cerr << "Both streams finished, returning Finish" << Endl;
             return NUdf::EFetchStatus::Finish;
         }
 
     private:
+        bool LeftFinished_ = false;
+        bool RightFinished_ = false;
+        
         [[maybe_unused]] const TVector<ui32>&    LeftKeyColumns_;
         [[maybe_unused]] const TVector<ui32>&    RightKeyColumns_;
         NUdf::TUnboxedValue                      LeftStream_;
         NUdf::TUnboxedValue                      RightStream_;
         const THolderFactory&                    HolderFactory_;
         const TVector<TType*>&                   ResultItemTypes_;
+        const size_t                             LeftStreamWidth_;
+        const size_t                             RightStreamWidth_;
     };
 
     void RegisterDependencies() const final {
@@ -203,4 +323,5 @@ IComputationNode* WrapDqBlockHashJoin(TCallable& callable, const TComputationNod
 }
 
 } // namespace NKikimr::NMiniKQL
+
 
