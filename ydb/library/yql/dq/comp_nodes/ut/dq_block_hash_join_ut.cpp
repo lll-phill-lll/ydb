@@ -21,10 +21,16 @@ NUdf::TUnboxedValue DoTestDqBlockHashJoin(
 ) {
     TDqProgramBuilder& pb = setup.GetDqProgramBuilder();
 
+    // Convert regular lists to block lists
     TRuntimeNode leftList = pb.Arg(leftType);
     TRuntimeNode rightList = pb.Arg(rightType);
-    const auto leftStream = ToWideStream(pb, leftList);
-    const auto rightStream = ToWideStream(pb, rightList);
+    
+    // Convert to block format
+    const auto leftBlockList = ToBlockList(pb, leftList);
+    const auto rightBlockList = ToBlockList(pb, rightList);
+    
+    const auto leftStream = ToWideStream(pb, leftBlockList);
+    const auto rightStream = ToWideStream(pb, rightBlockList);
     const auto joinNode = pb.DqBlockHashJoin(leftStream, rightStream, joinKind, leftKeyColumns, rightKeyColumns, leftStream.GetStaticType());
     
     const auto resultNode = FromWideStream(pb, joinNode);
@@ -67,12 +73,20 @@ Y_UNIT_TEST_SUITE(TDqBlockHashJoinBasicTest) {
         TVector<ui64> rightKeys = {2, 3, 4, 6, 7};
         TVector<TString> rightValues = {"x", "y", "z", "u", "v"};
 
-        TVector<ui64> expectedKeys = {1, 2, 3, 4, 5, 2, 3, 4, 6, 7};
-        TVector<TString> expectedValues = {"a", "b", "c", "d", "e", "x", "y", "z", "u", "v"};
+        // For inner join, we expect intersection of keys: 2, 3, 4
+        TVector<ui64> expectedKeys = {2, 3, 4};
+        TVector<TString> expectedLeftValues = {"b", "c", "d"};
+        TVector<TString> expectedRightValues = {"x", "y", "z"};
 
         auto [leftType, leftList] = ConvertVectorsToTuples(setup, leftKeys, leftValues);
         auto [rightType, rightList] = ConvertVectorsToTuples(setup, rightKeys, rightValues);
-        auto [expectedType, expected] = ConvertVectorsToTuples(setup, expectedKeys, expectedValues);
+        
+        // Create expected result as concatenated tuples (left + right)
+        TVector<ui64> expectedResultKeys = {2, 3, 4};
+        TVector<TString> expectedResultLeftValues = {"b", "c", "d"};
+        TVector<TString> expectedResultRightValues = {"x", "y", "z"};
+        auto [expectedType, expected] = ConvertVectorsToTuples(setup, 
+            expectedResultKeys, expectedResultLeftValues, expectedResultRightValues);
 
         RunTestDqBlockHashJoin(
             setup, EJoinKind::Inner,
