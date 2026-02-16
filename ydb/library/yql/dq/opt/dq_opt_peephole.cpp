@@ -944,13 +944,13 @@ TExprBase DqPeepholeRewriteBlockHashJoin(const TExprBase& node, TExprContext& ct
     for (auto i = 0U; i < leftKeyColumnNodes.size(); ++i) {
 
         auto leftName = leftKeyColumnNodes[i]->Content();
-        auto leftIndex = itemTypeLeft->FindItem(leftName);
-        YQL_ENSURE(leftIndex);
+        auto leftIndex = FindJoinKeyIndex(itemTypeLeft, leftName, leftTableLabel, true, i);
+        YQL_ENSURE(leftIndex, "Left join key column '" << leftName << "' not found in left input type (left label: '" << leftTableLabel << "')");
         const auto keyTypeLeft = itemTypeLeft->GetItems()[*leftIndex]->GetItemType();
 
         auto rightName = rightKeyColumnNodes[i]->Content();
-        auto rightIndex = itemTypeRight->FindItem(rightName);
-        YQL_ENSURE(rightIndex);
+        auto rightIndex = FindJoinKeyIndex(itemTypeRight, rightName, rightTableLabel, false, i);
+        YQL_ENSURE(rightIndex, "Right join key column '" << rightName << "' not found in right input type (right label: '" << rightTableLabel << "')");
         const auto keyTypeRight = itemTypeRight->GetItems()[*rightIndex]->GetItemType();
 
         bool hasOptional = false;
