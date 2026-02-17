@@ -101,7 +101,7 @@ void TWorkloadCommandBenchmark::Config(TConfig& config) {
         .StoreResult(&Threads).DefaultValue(Threads).RequiredArgument("COUNT");
 
     config.Opts->AddLongOption("tx-mode", "Transaction mode (serializable-rw, online-ro, stale-ro, snapshot-ro, snapshot-rw, no-tx)")
-        .RequiredArgument("STRING").StoreResult(&TxMode).DefaultValue("serializable-rw");
+        .RequiredArgument("STRING").StoreResult(&TxMode).DefaultValue(TxMode);
 }
 
 TString TWorkloadCommandBenchmark::PatchQuery(const TStringBuf& original) const {
