@@ -100,15 +100,8 @@ void TWorkloadCommandBenchmark::Config(TConfig& config) {
     config.Opts->AddLongOption('t', "threads", "Number of parallel threads in workload")
         .StoreResult(&Threads).DefaultValue(Threads).RequiredArgument("COUNT");
 
-    config.Opts->AddLongOption("tx-mode", "Transaction mode: serializable-rw (default) or no-tx")
-        .OptionalArgument("STRING").StoreMappedResult(&NoTx, [](const TString& value) -> bool {
-            if (value == "serializable-rw") {
-                return false;
-            } else if (value == "no-tx" || value == "notx") {
-                return true;
-            }
-            throw yexception() << "Invalid transaction mode: " << value << ". Valid values are: serializable-rw, no-tx";
-        }).DefaultValue("serializable-rw");
+    config.Opts->AddLongOption("tx-mode", "Transaction mode (serializable-rw, online-ro, stale-ro, snapshot-ro, snapshot-rw, no-tx)")
+        .RequiredArgument("STRING").StoreResult(&TxMode).DefaultValue("serializable-rw");
 }
 
 TString TWorkloadCommandBenchmark::PatchQuery(const TStringBuf& original) const {
@@ -650,7 +643,7 @@ void TWorkloadCommandBenchmark::SavePlans(const BenchmarkUtils::TQueryBenchmarkR
 BenchmarkUtils::TQueryBenchmarkSettings TWorkloadCommandBenchmark::GetBenchmarkSettings(bool withProgress) const {
     BenchmarkUtils::TQueryBenchmarkSettings result;
     result.WithProgress = withProgress;
-    result.NoTx = NoTx;
+    result.TxMode = TxMode;
     result.RetrySettings = RetrySettings;
     if (GlobalDeadline != TInstant::Max()) {
         result.Deadline.Deadline = GlobalDeadline;
