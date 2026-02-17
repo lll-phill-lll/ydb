@@ -33,20 +33,31 @@ namespace NYdb::NConsoleClient::BenchmarkUtils {
 using namespace NYdb;
 
 NQuery::TTxControl GetTxControl(ETxMode txMode) {
-    switch (txMode) {
-    case ETxMode::NoTx:
+    if (txMode == ETxMode::NoTx) {
         return NQuery::TTxControl::NoTx();
-    case ETxMode::SerializableRW:
-        return NQuery::TTxControl::BeginTx(NQuery::TTxSettings::SerializableRW()).CommitTx();
-    case ETxMode::OnlineRO:
-        return NQuery::TTxControl::BeginTx(NQuery::TTxSettings::OnlineRO()).CommitTx();
-    case ETxMode::StaleRO:
-        return NQuery::TTxControl::BeginTx(NQuery::TTxSettings::StaleRO()).CommitTx();
-    case ETxMode::SnapshotRO:
-        return NQuery::TTxControl::BeginTx(NQuery::TTxSettings::SnapshotRO()).CommitTx();
-    case ETxMode::SnapshotRW:
-        return NQuery::TTxControl::BeginTx(NQuery::TTxSettings::SnapshotRW()).CommitTx();
     }
+
+    NQuery::TTxSettings txSettings;
+    switch (txMode) {
+    case ETxMode::SerializableRW:
+        txSettings = NQuery::TTxSettings::SerializableRW();
+        break;
+    case ETxMode::OnlineRO:
+        txSettings = NQuery::TTxSettings::OnlineRO();
+        break;
+    case ETxMode::StaleRO:
+        txSettings = NQuery::TTxSettings::StaleRO();
+        break;
+    case ETxMode::SnapshotRO:
+        txSettings = NQuery::TTxSettings::SnapshotRO();
+        break;
+    case ETxMode::SnapshotRW:
+        txSettings = NQuery::TTxSettings::SnapshotRW();
+        break;
+    default:
+        Y_UNREACHABLE();
+    }
+    return NQuery::TTxControl::BeginTx(txSettings).CommitTx();
 }
 
 TTestInfo::TTestInfo(std::vector<TTiming>&& timings)
