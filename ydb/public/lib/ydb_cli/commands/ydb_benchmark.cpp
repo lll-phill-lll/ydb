@@ -1,5 +1,7 @@
 #include "ydb_benchmark.h"
 #include "benchmark_utils.h"
+
+#include <util/generic/serialized_enum.h>
 #include <ydb/public/lib/ydb_cli/common/format.h>
 #include <ydb/public/lib/ydb_cli/common/plan2svg.h>
 #include <ydb/public/lib/ydb_cli/common/pretty_table.h>
@@ -100,7 +102,7 @@ void TWorkloadCommandBenchmark::Config(TConfig& config) {
     config.Opts->AddLongOption('t', "threads", "Number of parallel threads in workload")
         .StoreResult(&Threads).DefaultValue(Threads).RequiredArgument("COUNT");
 
-    config.Opts->AddLongOption("tx-mode", "Transaction mode (serializable-rw, online-ro, stale-ro, snapshot-ro, snapshot-rw, no-tx)")
+    config.Opts->AddLongOption("tx-mode", TStringBuilder() << "Transaction mode (" << GetEnumAllNames<BenchmarkUtils::ETxMode>() << ")")
         .RequiredArgument("STRING").StoreResult(&TxMode).DefaultValue(TxMode);
 }
 
