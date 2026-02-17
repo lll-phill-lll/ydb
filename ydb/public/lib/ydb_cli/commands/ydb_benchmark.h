@@ -29,6 +29,7 @@ private:
 private:
     class TIterationExecution;
     TString OutFilePath;
+    bool NoTx = false;
     ui32 IterationsCount;
     TString JsonReportFileName;
     TString CsvReportFileName;

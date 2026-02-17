@@ -318,10 +318,14 @@ TQueryBenchmarkResult ExecuteImpl(const TString& query, TStringBuf expected, NQu
         return *error;
     }
     THolder<TQueryResultScanner> composite;
-    const auto resStatus = client.RetryQuerySync([&composite, &benchmarkSettings, &query, &settings](NQuery::TQueryClient& qc) -> TStatus {
+    const auto noTx = benchmarkSettings.NoTx;
+    const auto resStatus = client.RetryQuerySync([&composite, &benchmarkSettings, &query, &settings, noTx](NQuery::TQueryClient& qc) -> TStatus {
+        auto txControl = noTx
+            ? NYdb::NQuery::TTxControl::NoTx()
+            : NYdb::NQuery::TTxControl::BeginTx().CommitTx();
         auto it = qc.StreamExecuteQuery(
             query,
-            NYdb::NQuery::TTxControl::BeginTx().CommitTx(),
+            txControl,
             settings).GetValueSync();
         if (!it.IsSuccess()) {
             return it;

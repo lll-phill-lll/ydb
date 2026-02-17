@@ -105,6 +105,7 @@ struct TQueryBenchmarkSettings {
     TQueryBenchmarkDeadline Deadline;
     std::optional<TString> PlanFileName;
     bool WithProgress = false;
+    bool NoTx = false;
     NYdb::NRetry::TRetryOperationSettings RetrySettings;
     // Maximum number of rows to store per result index.
     // Used both for CompareWithExpected and for output.
