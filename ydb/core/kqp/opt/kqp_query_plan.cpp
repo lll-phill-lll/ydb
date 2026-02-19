@@ -1798,6 +1798,7 @@ private:
 
         TOperator op;
         op.Properties["Name"] = name;
+        op.Properties["Condition"] = MakeJoinConditionString(join.LeftKeysColumnNames(), join.RightKeysColumnNames());
 
         AddOptimizerEstimates(op, join);
 
