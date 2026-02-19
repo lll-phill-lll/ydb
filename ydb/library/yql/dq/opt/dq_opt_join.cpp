@@ -1684,13 +1684,16 @@ TExprBase DqBuildHashJoin(
         }
     }
 
+    const bool isBlockHashJoinSupported = joinType == "Inner"sv || joinType == "Left"sv
+        || joinType == "LeftSemi"sv || joinType == "LeftOnly"sv;
+
     TExprNode::TPtr hashJoin;
     switch (mode) {
         case EHashJoinMode::GraceAndSelf:
         case EHashJoinMode::Grace:
-            if (useBlockHashJoin
-                && (joinType == "Inner"sv || joinType == "Left"sv || joinType == "LeftSemi"sv || joinType == "LeftOnly"sv))
-            {
+            if (useBlockHashJoin && isBlockHashJoinSupported) {
+                // Create TDqPhyBlockHashJoin node with structured inputs - peephole will handle conversion
+                // Pass the original structured inputs, not wide flows
                 hashJoin = Build<TDqPhyBlockHashJoin>(ctx, join.Pos())
                     .LeftInput(leftInputArg)
                     .RightInput(rightInputArg)
