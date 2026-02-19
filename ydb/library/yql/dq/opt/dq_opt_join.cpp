@@ -1688,9 +1688,9 @@ TExprBase DqBuildHashJoin(
     switch (mode) {
         case EHashJoinMode::GraceAndSelf:
         case EHashJoinMode::Grace:
-            if (useBlockHashJoin) {
-                // Create TDqPhyBlockHashJoin node with structured inputs - peephole will handle conversion
-                // Pass the original structured inputs, not wide flows
+            if (useBlockHashJoin
+                && (joinType == "Inner"sv || joinType == "Left"sv || joinType == "LeftSemi"sv || joinType == "LeftOnly"sv))
+            {
                 hashJoin = Build<TDqPhyBlockHashJoin>(ctx, join.Pos())
                     .LeftInput(leftInputArg)
                     .RightInput(rightInputArg)
