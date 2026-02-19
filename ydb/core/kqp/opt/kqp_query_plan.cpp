@@ -1238,6 +1238,8 @@ private:
             return {CurrentArgContext.AddArg(node.Get())};
         } else if (auto maybeCrossJoin = TMaybeNode<TDqPhyCrossJoin>(node)) {
             operatorId = Visit(maybeCrossJoin.Cast(), planNode);
+        } else if (auto maybeBlockHashJoin = TMaybeNode<TDqPhyBlockHashJoin>(node)) {
+            operatorId = Visit(maybeBlockHashJoin.Cast(), planNode);
         } else if (auto lookupJoin = TMaybeNode<TKqpIndexLookupJoin>(node)) {
             operatorId = Visit(lookupJoin.Cast(), planNode);
         } else if (auto maybeCombineByKey = TMaybeNode<TCoCombineByKey>(node)) {
@@ -1787,6 +1789,18 @@ private:
 
         TOperator op;
         op.Properties["Name"] = name;
+
+        return AddOperator(planNode, name, std::move(op));
+    }
+
+    std::variant<ui32, TArgContext> Visit(const TDqPhyBlockHashJoin& join, TQueryPlanNode& planNode) {
+        const auto name = TStringBuilder() << join.JoinType().Value() << "Join (BlockHash)";
+
+        TOperator op;
+        op.Properties["Name"] = name;
+        op.Properties["Condition"] = MakeJoinConditionString(join.LeftJoinKeyNames(), join.RightJoinKeyNames());
+
+        AddOptimizerEstimates(op, join);
 
         return AddOperator(planNode, name, std::move(op));
     }
