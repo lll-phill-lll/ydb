@@ -78,8 +78,8 @@ public:
         return spillingServiceActorId;
     }
 
-    TActorId StartSpillingActor(const TActorId& client, bool removeBlobsAfterRead = true) {
-        auto spillingActor = CreateDqLocalFileSpillingActor(1ul, "test", client, removeBlobsAfterRead);
+    TActorId StartSpillingActor(const TActorId& client, bool removeBlobsAfterRead = true, ESpillingType spillingType = ESpillingType::Compute) {
+        auto spillingActor = CreateDqLocalFileSpillingActor(1ul, "test", client, removeBlobsAfterRead, spillingType);
         auto spillingActorId = Register(spillingActor);
         EnableScheduleForActor(spillingActorId);
 
