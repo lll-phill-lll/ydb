@@ -71,6 +71,7 @@
 #include <library/cpp/resource/resource.h>
 
 #include <util/folder/dirut.h>
+#include <util/folder/path.h>
 
 #define YDB_LOG_THIS_FILE_COMPONENT NKikimrServices::KQP_PROXY
 
@@ -291,25 +292,42 @@ public:
             TString spillingRoot = cfg.GetRoot();
             if (spillingRoot.empty()) {
                 spillingRoot = NYql::NDq::GetTmpSpillingRootForCurrentUser();
-                MakeDirIfNotExist(spillingRoot);
             }
 
-            SpillingService = TActivationContext::Register(NYql::NDq::CreateDqLocalFileSpillingService(
-                NYql::NDq::TFileSpillingServiceConfig{
-                    .Root = spillingRoot,
-                    .MaxTotalSize = cfg.GetMaxTotalSize(),
-                    .IoThreadPoolWorkersCount = cfg.GetIoThreadPool().GetWorkersCount(),
-                    .IoThreadPoolQueueSize = cfg.GetIoThreadPool().GetQueueSize(),
-                    .CleanupOnShutdown = false
-                },
-                Counters));
-            TActivationContext::ActorSystem()->RegisterLocalService(
-                NYql::NDq::MakeDqLocalFileSpillingServiceID(SelfId().NodeId()), SpillingService);
+            // Make sure the spilling service will be able to work on this node before enabling spilling.
+            // If its root directory can not be prepared, keep spilling disabled for compute actors and
+            // channels, otherwise every spilling attempt would just fail with "Service not started".
+            bool spillingRootReady = false;
+            try {
+                TFsPath rootPath(spillingRoot);
+                rootPath.MkDirs();
+                spillingRootReady = !rootPath.IsSymlink() && rootPath.IsDirectory();
+            } catch (...) {
+                YDB_LOG_ERROR("Can not prepare spilling root, spilling is disabled on this node",
+                    {"root", spillingRoot},
+                    {"error", CurrentExceptionMessage()});
+            }
 
-            if (NActors::TMon* mon = AppData()->Mon) {
-                NMonitoring::TIndexMonPage* actorsMonPage = mon->RegisterIndexPage("actors", "Actors");
-                mon->RegisterActorPage(actorsMonPage, "kqp_spilling_file", "KQP Local File Spilling Service", false,
-                    TActivationContext::ActorSystem(), SpillingService);
+            AppData()->SpillingServiceReady = spillingRootReady;
+
+            if (spillingRootReady) {
+                SpillingService = TActivationContext::Register(NYql::NDq::CreateDqLocalFileSpillingService(
+                    NYql::NDq::TFileSpillingServiceConfig{
+                        .Root = spillingRoot,
+                        .MaxTotalSize = cfg.GetMaxTotalSize(),
+                        .IoThreadPoolWorkersCount = cfg.GetIoThreadPool().GetWorkersCount(),
+                        .IoThreadPoolQueueSize = cfg.GetIoThreadPool().GetQueueSize(),
+                        .CleanupOnShutdown = false
+                    },
+                    Counters));
+                TActivationContext::ActorSystem()->RegisterLocalService(
+                    NYql::NDq::MakeDqLocalFileSpillingServiceID(SelfId().NodeId()), SpillingService);
+
+                if (NActors::TMon* mon = AppData()->Mon) {
+                    NMonitoring::TIndexMonPage* actorsMonPage = mon->RegisterIndexPage("actors", "Actors");
+                    mon->RegisterActorPage(actorsMonPage, "kqp_spilling_file", "KQP Local File Spilling Service", false,
+                        TActivationContext::ActorSystem(), SpillingService);
+                }
             }
         }
 

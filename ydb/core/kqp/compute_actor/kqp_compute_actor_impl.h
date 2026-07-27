@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ydb/core/base/appdata_fwd.h>
 #include <ydb/library/yql/dq/actors/compute/dq_task_runner_exec_ctx.h>
 
 namespace NKikimr {
@@ -23,7 +24,7 @@ public:
         TVector<IDqOutput::TPtr>&& outputs, NUdf::IPgBuilder* /* pgBuilder */) const override;
 
     IDqChannelStorage::TPtr CreateChannelStorage(ui64 channelId, bool withSpilling) const override {
-        return TDqTaskRunnerExecutionContext::CreateChannelStorage(channelId, WithSpilling_ || withSpilling);
+        return TDqTaskRunnerExecutionContext::CreateChannelStorage(channelId, (WithSpilling_ || withSpilling) && AppData()->SpillingServiceReady);
     }
 
 private:

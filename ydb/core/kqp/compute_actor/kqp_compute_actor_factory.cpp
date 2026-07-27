@@ -116,7 +116,9 @@ public:
         NYql::NDq::TComputeRuntimeSettings runtimeSettings;
 
         runtimeSettings.ReportStatsSettings = args.ReportStatsSettings;
-        runtimeSettings.UseSpilling = args.WithSpilling;
+        // Do not enable spilling if the local file spilling service is not available on this node,
+        // otherwise every spilling attempt would just fail with "Service not started".
+        runtimeSettings.UseSpilling = args.WithSpilling && AppData()->SpillingServiceReady;
         runtimeSettings.StatsMode = args.StatsMode;
         runtimeSettings.WithProgressStats = args.WithProgressStats;
 

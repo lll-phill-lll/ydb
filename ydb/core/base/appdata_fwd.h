@@ -292,6 +292,10 @@ struct TAppData {
     bool AlwaysSetSystemOwner = false;
     bool AllowHugeKeyValueDeletes = true; // delete when all clients limit deletes per request
     bool EnableKqpSpilling = false;
+    // Node-local flag reflecting whether the local file spilling service can work on this node.
+    // Set to false by the KQP proxy service if the spilling root can not be prepared (e.g. directory
+    // creation fails), so that spilling is not enabled for compute actors and channels on this node.
+    bool SpillingServiceReady = true;
     bool AllowShadowDataInSchemeShardForTests = false;
     bool EnableMvccSnapshotWithLegacyDomainRoot = false;
     bool UsePartitionStatsCollectorForTests = false;

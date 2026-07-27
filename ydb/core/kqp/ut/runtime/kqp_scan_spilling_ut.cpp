@@ -3,6 +3,9 @@
 
 #include <ydb/library/yql/dq/actors/compute/dq_compute_actor.h>
 
+#include <util/folder/path.h>
+#include <util/generic/scope.h>
+#include <util/stream/file.h>
 #include <util/system/fs.h>
 
 namespace NKikimr {
@@ -34,7 +37,9 @@ NKikimrConfig::TAppConfig AppCfg() {
     return appCfg;
 }
 
-NKikimrConfig::TAppConfig AppCfgLowComputeLimits(double reasonableTreshold, bool enableSpilling=true, bool limitFileSize=false) {
+NKikimrConfig::TAppConfig AppCfgLowComputeLimits(double reasonableTreshold, bool enableSpilling=true, bool limitFileSize=false,
+    const TString& spillingRoot = "./spilling/")
+{
     NKikimrConfig::TAppConfig appCfg;
 
     auto* ts = appCfg.MutableTableServiceConfig();
@@ -49,7 +54,7 @@ NKikimrConfig::TAppConfig AppCfgLowComputeLimits(double reasonableTreshold, bool
     auto* spilling = ts->MutableSpillingServiceConfig()->MutableLocalFileConfig();
 
     spilling->SetEnable(enableSpilling);
-    spilling->SetRoot("./spilling/");
+    spilling->SetRoot(spillingRoot);
     if (limitFileSize) {
         spilling->SetMaxTotalSize(1);
     }
@@ -179,6 +184,46 @@ Y_UNIT_TEST(HandleErrorsCorrectly) {
     const auto spillingPrefix = "[Compute spilling]";
     const auto pos = errorMsg.find(spillingPrefix);
     UNIT_ASSERT_VALUES_UNEQUAL_C(pos, std::string::npos, "Spilling prefix not found in error message");
+}
+
+Y_UNIT_TEST(NoSpillingErrorWhenServiceFailedToStart) {
+    Cerr << "cwd: " << NFs::CurrentWorkingDirectory() << Endl;
+
+    // Force the local file spilling service to fail on startup: point its root at a regular file,
+    // so that it can not create its working directory and lands in the broken state.
+    const TString brokenRoot = "./spilling_broken_root";
+    TFsPath(brokenRoot).ForceDelete();
+    {
+        TFileOutput blocker(brokenRoot);
+        blocker << "not a directory";
+    }
+    Y_DEFER {
+        TFsPath(brokenRoot).ForceDelete();
+    };
+
+    // Spilling is enabled, but the service can not start (root + "/" is under a regular file).
+    TKikimrRunner kikimr(AppCfgLowComputeLimits(0.01, /* enableSpilling */ true, /* limitFileSize */ false, brokenRoot + "/"));
+
+    auto db = kikimr.GetQueryClient();
+
+    FillTableWithData(db);
+
+    auto result = db.ExecuteQuery(SimpleGraceJoinWithSpillingQuery, NYdb::NQuery::TTxControl::BeginTx().CommitTx(),
+        NYdb::NQuery::TExecuteQuerySettings()).ExtractValueSync();
+    const auto errorMsg = result.GetIssues().ToString();
+
+    // Since the spilling service failed to start, spilling must not be enabled for compute nodes or channels,
+    // so the query must never fail with a spilling-related error (e.g. "Service not started").
+    UNIT_ASSERT_C(errorMsg.find("Service not started") == std::string::npos, errorMsg);
+    UNIT_ASSERT_C(errorMsg.find("[Compute spilling]") == std::string::npos, errorMsg);
+    UNIT_ASSERT_C(errorMsg.find("[Channel spilling]") == std::string::npos, errorMsg);
+
+    // Nothing should have been spilled either.
+    TKqpCounters counters(kikimr.GetTestServer().GetRuntime()->GetAppData().Counters);
+    UNIT_ASSERT_VALUES_EQUAL(counters.ComputeSpilling.WriteBlobs->Val(), 0);
+    UNIT_ASSERT_VALUES_EQUAL(counters.ComputeSpilling.ReadBlobs->Val(), 0);
+    UNIT_ASSERT_VALUES_EQUAL(counters.ChannelSpilling.WriteBlobs->Val(), 0);
+    UNIT_ASSERT_VALUES_EQUAL(counters.ChannelSpilling.ReadBlobs->Val(), 0);
 }
 
 Y_UNIT_TEST(SelfJoinQueryService) {
