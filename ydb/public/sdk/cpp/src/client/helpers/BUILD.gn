@@ -1,7 +1,5 @@
 library("helpers") {
-  public_deps = [
-    "//ydb/public/sdk/cpp/src/client/driver",
-  ]
+  public_deps = [ "//ydb/public/sdk/cpp/src/client/driver" ]
 
   deps = [
     "//ydb/public/sdk/cpp/src/client/iam",

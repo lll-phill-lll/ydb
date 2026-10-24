@@ -5,9 +5,7 @@ library("gateway") {
     # "//ydb/library/yql/providers/function/common",
   ]
 
-  deps = [
-    "//yql/essentials/utils",
-  ]
+  deps = [ "//yql/essentials/utils" ]
 
   sources = [ "dq_function_gateway.cpp" ]
 }

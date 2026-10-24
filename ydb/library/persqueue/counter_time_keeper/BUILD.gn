@@ -1,7 +1,5 @@
 library("counter_time_keeper") {
-  public_deps = [
-    "//ydb/core/tablet",
-  ]
+  public_deps = [ "//ydb/core/tablet" ]
 
   deps = [
     # "//library/cpp/lwtrace/protos",  # peerdir only

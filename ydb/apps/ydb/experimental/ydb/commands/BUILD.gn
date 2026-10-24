@@ -1,7 +1,5 @@
 library("commands") {
-  public_deps = [
-    "//ydb/apps/ydb/commands",
-  ]
+  public_deps = [ "//ydb/apps/ydb/commands" ]
 
   deps = [
     "//contrib/libs/apache/arrow",

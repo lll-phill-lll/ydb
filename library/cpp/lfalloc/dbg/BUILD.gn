@@ -16,7 +16,7 @@ contrib_library("dbg") {
 
   sources = [ "//library/cpp/lfalloc/lf_allocX64.cpp" ]
 
-  configs = [ ":dbg_private_config" ]
-
   link_slot_provides = [ "allocator" ]
+
+  configs = [ ":dbg_private_config" ]
 }
