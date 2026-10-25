@@ -395,6 +395,8 @@ template <typename Source> class TInMemoryHashJoin {
     size_t BuildCursor_ = 0;
 };
 
+constexpr size_t PrefetchMinTablesBytes = 4 << 20;
+
 template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class THybridHashJoin {
     struct Logger {
         Logger(TComputationContext& ctx, TString name)
@@ -870,9 +872,38 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                     MKQL_ENSURE(false, "unhandled ESpillResult case");
                 }
                 ui32 idx = 0;
-                for (TSingleTuple tuple : *state.FetchedPack) {
+                const TPackResult& fetchedPack = *state.FetchedPack;
+                const size_t packWidth = fetchedPack.NTuples ? fetchedPack.PackedTuples.size() / fetchedPack.NTuples : 0;
+                auto prefetchProbeRow = [&](ui32 index, auto prefetch) {
+                    if (index >= fetchedPack.NTuples) {
+                        return;
+                    }
+                    const TSingleTuple ahead{fetchedPack.PackedTuples.data() + packWidth * index,
+                                             fetchedPack.Overflow.data()};
+                    const int bucketIndex = Settings.BucketIndex(ahead);
+                    if (TTable* table = std::get_if<TTable>(&state.Spiller.GetState().Buckets[bucketIndex])) {
+                        prefetch(*table, ahead.PackedData);
+                    }
+                };
+                size_t tablesBytes = 0;
+                if constexpr (!IsGrid) {
+                    for (auto& bucket : state.Spiller.GetState().Buckets) {
+                        if (const TTable* table = std::get_if<TTable>(&bucket)) {
+                            tablesBytes += table->SizeBytes();
+                        }
+                    }
+                }
+                const bool prefetchEnabled = tablesBytes > PrefetchMinTablesBytes;
+                for (TSingleTuple tuple : fetchedPack) {
                     if (idx++ < state.ResumeIndex) {
                         continue;
+                    }
+                    if constexpr (!IsGrid) {
+                        if (prefetchEnabled) {
+                            prefetchProbeRow(idx - 1 + 24, [](TTable& t, const ui8* p) { t.PrefetchDirectory(p); });
+                            prefetchProbeRow(idx - 1 + 16, [](TTable& t, const ui8* p) { t.PrefetchBuffer(p); });
+                            prefetchProbeRow(idx - 1 + 8, [](TTable& t, const ui8* p) { t.PrefetchTuple(p); });
+                        }
                     }
                     if constexpr (IsGrid) {
                         if (!MatchGridRowInMemory(state, tuple, lookupToTable, finishProbeRow, isFull)) {
