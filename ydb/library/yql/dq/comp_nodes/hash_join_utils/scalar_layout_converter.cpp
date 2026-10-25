@@ -783,27 +783,26 @@ private:
             columnsData.data(), columnsNullBitmap.data(),
             packedData, packed.Overflow, 0, count);
 
-        // Now extract each tuple for each extractor
-        for (ui32 tupleIndex = 0; tupleIndex < count; ++tupleIndex) {
-            // We need to calculate pointer offsets based on inner extractors
+        if (PointerOffsets_.size() != Extractors_.size()) {
+            PointerOffsets_.assign(Extractors_.size(), 0);
             for (size_t i = 0; i < Extractors_.size(); ++i) {
-                const auto& mapping = InnerMapping_[i];
-
-                // Calculate how many pointers we need to pass
-                // (strings have 2 pointers per column: offset + data)
-                size_t pointerOffset = 0;
-                for (size_t j = 0; j < mapping.front(); ++j) {
+                for (size_t j = 0; j < InnerMapping_[i].front(); ++j) {
                     auto* innerExtractor = InnerExtractors_[j];
                     if (innerExtractor->GetElementSizeType() == NPackedTuple::EColumnSizeType::Variable) {
-                        pointerOffset += 2; // offset + data
+                        PointerOffsets_[i] += 2; // offset + data
                     } else {
-                        pointerOffset += 1;
+                        PointerOffsets_[i] += 1;
                     }
                 }
+            }
+        }
 
+        // Now extract each tuple for each extractor
+        for (ui32 tupleIndex = 0; tupleIndex < count; ++tupleIndex) {
+            for (size_t i = 0; i < Extractors_.size(); ++i) {
                 values[tupleIndex * Extractors_.size() + i] = Extractors_[i]->CreateFromUnpack(
-                    columnsData.data() + pointerOffset,
-                    columnsNullBitmap.data() + pointerOffset,
+                    columnsData.data() + PointerOffsets_[i],
+                    columnsNullBitmap.data() + PointerOffsets_[i],
                     tupleIndex,
                     HolderFactory_);
             }
@@ -813,6 +812,7 @@ private:
     TVector<IColumnDataExtractor::TPtr> Extractors_;
     std::vector<IColumnDataExtractor*> InnerExtractors_;
     TVector<TVector<ui32>> InnerMapping_;
+    TVector<size_t> PointerOffsets_;
     THolder<NPackedTuple::TTupleLayout> TupleLayout_;
     const THolderFactory& HolderFactory_;
     
