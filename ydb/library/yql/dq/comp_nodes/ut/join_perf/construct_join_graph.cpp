@@ -319,7 +319,7 @@ THolder<IComputationGraph> ConstructJoinGraphStream(EJoinKind joinKind, ETestedJ
         }
         case NKikimr::NMiniKQL::ETestedJoinAlgo::kScalarMap: {
             const auto& rightKeyColumns = descr.RightSource.KeyColumnIndexes;
-            TRuntimeNode rightDict = pb.ToSortedDict(
+            TRuntimeNode rightDict = pb.ToHashedDict(
                 args.Right, true,
                 [&](TRuntimeNode tuple) {
                     if (rightKeyColumns.size() == 1) {
@@ -352,17 +352,14 @@ THolder<IComputationGraph> ConstructJoinGraphStream(EJoinKind joinKind, ETestedJ
                 return values;
             });
 
-            TRenames scalarMapRenames = MakeScalarMapJoinRenames(std::ssize(descr.LeftSource.ColumnTypes),
-                                                                 std::ssize(descr.RightSource.ColumnTypes) -
-                                                                     descr.RightSource.KeyColumnIndexes.size());
-            TRuntimeNode mapJoinSomething =
-                pb.MapJoinCore(source, rightDict, joinKind, descr.LeftSource.KeyColumnIndexes, scalarMapRenames.Left,
-                               scalarMapRenames.Right, pb.NewFlowType(pb.NewTupleType(resultTypesArr)));
-
-            return ToWideStream(
-                pb, pb.Collect(pb.NarrowMap(mapJoinSomething, [&pb](TRuntimeNode::TList items) -> TRuntimeNode {
-                    return pb.NewTuple(items);
-                })));
+            const bool rightInOutput = joinKind != EJoinKind::LeftSemi && joinKind != EJoinKind::LeftOnly;
+            TRenames scalarMapRenames = MakeScalarMapJoinRenames(
+                std::ssize(descr.LeftSource.ColumnTypes),
+                rightInOutput ? std::ssize(descr.RightSource.ColumnTypes) - descr.RightSource.KeyColumnIndexes.size()
+                              : 0);
+            return pb.FromFlow(pb.MapJoinCore(source, rightDict, joinKind, descr.LeftSource.KeyColumnIndexes,
+                                              scalarMapRenames.Left, scalarMapRenames.Right,
+                                              pb.NewFlowType(multiResultType)));
         }
         case ETestedJoinAlgo::kBlockMap: {
             TVector<ui32> kEmptyColumnDrops;
