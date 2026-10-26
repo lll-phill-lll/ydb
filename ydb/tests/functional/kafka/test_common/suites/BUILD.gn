@@ -1,7 +1,10 @@
 library("suites") {
   testonly = true
 
-  deps = [ "//ydb/tests/functional/kafka/test_common" ]
+  deps = [
+    "//ydb/public/sdk/cpp/src/client/query",
+    "//ydb/tests/functional/kafka/test_common",
+  ]
 
   sources = [
     "admin_ut.cpp",

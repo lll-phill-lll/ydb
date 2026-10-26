@@ -9,5 +9,9 @@ library("test_common") {
     "//ydb/public/sdk/cpp/src/client/topic",
   ]
 
+  deps = [
+    # "//ydb/public/sdk/cpp/src/client/query",  # peerdir only
+  ]
+
   sources = [ "helpers.cpp" ]
 }
