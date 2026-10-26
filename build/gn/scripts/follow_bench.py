@@ -295,6 +295,8 @@ def main():
     ap.add_argument("--ya-dirs", nargs="+", help="of ya make (default: the dirs of --targets)")
     ap.add_argument("--warm", action="store_true",
                     help="ninja (--targets) and ya (--ya-dirs) build the previous commit first")
+    ap.add_argument("--from", dest="prev", metavar="REV",
+                    help="with --warm: the previous commit, checked out first (default: the bench HEAD)")
     ap.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="for gn gen and ninja")
     ap.add_argument("--max-load", type=float, help="default: 5%% of the CPUs")
     ap.add_argument("--idle-timeout", type=int, default=900)
@@ -315,6 +317,8 @@ def main():
 
     if git(args.root, "status", "--porcelain"):
         sys.exit("follow_bench.py: the bench work tree has changes")
+    if args.warm and args.prev:
+        git(args.root, "checkout", "-q", "--detach", args.prev)
     prev = git(args.root, "rev-parse", "HEAD")
     ninja_warm = None
     if args.warm:

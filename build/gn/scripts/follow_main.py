@@ -20,14 +20,15 @@ after the last one merged
   5. build     autofix.py: ninja, uncommenting the edges it can; still
                failing -> STOP build
   6. commit    `gn: sync <U>` with what 3-5 changed (if anything)
-  7. bench     with --bench-root: follow_bench.py measures the incremental
+  7. bench     with --bench (off by default; the bench is --bench-root):
+               follow_bench.py measures the incremental
                build of the commit by ninja and by ya make in the bench work
                tree, one after another (the order alternates): ninja --targets
                (all tests), ya --ya-dirs (ydbd, ydb) and what follow_select.py
                picks for U, after both build them in the previous commit, not
                measured (follow_bench.py --warm: ninja normally has nothing to
                do there, ya fills its cache with its targets); a failed build
-               -> STOP bench (a finding: not fixed there; running again
+               -> STOP bench (a finding: not fixed there; --run --bench
                measures again, --run --skip-bench adds a GN-Bench-Skip trailer
                to the commit and goes on without its measurement)
   8. amend     the GN-Bench-* trailers of the measurements go into the message
@@ -42,8 +43,12 @@ finish the merge, delete the markers) and run again, like `git rebase
 The first run checks the starting point: the generator on it must change
 nothing (else STOP idempotence: commit what it changed, any message, or fix
 the generator) and the build
-must pass; with --bench-root it then builds the starting point in the bench
+must pass; with --bench it then builds the starting point in the bench
 from scratch (warming the caches of the bench).
+
+Steps run without --bench leave the bench tree behind; the next measured step
+first moves it to the commit before its U (the warm-up then builds what it
+missed, not measured).
 
 The front build and the bench must not share a compiler cache: give the bench
 a tag that is isolated in the config of dist-clangd (--bench-env
@@ -57,6 +62,7 @@ Run it in the work tree of the GN branch (e.g. cd ~/g/ydb/gn-follow):
     build/gn/scripts/follow_main.py                          # the status
     build/gn/scripts/follow_main.py --max-commits 3          # the status, the 3 commits marked
     build/gn/scripts/follow_main.py --run --max-commits 3    # go on for 3 commits
+    build/gn/scripts/follow_main.py --run --bench            # go on, measuring every step
     build/gn/scripts/follow_main.py --run --skip-bench       # after a STOP bench: go on without it
 
 The first run takes the bench and other settings, they are remembered in
@@ -834,7 +840,7 @@ class Follower:
 
     def bench(self, step, rec, full):
         """Measures HEAD in the bench (follow_bench.py); the trailers for its message."""
-        if not self.args.bench_root:
+        if not self.args.bench:
             return []
         if not full and any(l.startswith(SKIP_TRAILER + ":") for l in
                             self.git.out("log", "-1", "--format=%B", "HEAD").splitlines()):
@@ -860,7 +866,9 @@ class Follower:
             rec["select"] = sel
             dirs += [d for d in sel["tests"] + sel["modules"] if d not in dirs]
             self.say("  select: %s" % (" ".join(sel["tests"] + sel["modules"]) or "-"))
-        cmd += ["--ya-dirs"] + dirs + ([] if full else ["--warm"])
+        # the commit before U: the bench tree is behind it if steps went without --bench
+        merge = self.git.out("rev-list", "--first-parent", "--merges", "-n1", "HEAD")
+        cmd += ["--ya-dirs"] + dirs + ([] if full else ["--warm", "--from", merge + "^1"])
         cmd += (["--ya-cache-root", a.ya_cache_root] if a.ya_cache_root else []) + (["--full"] if full else [])
         self.say("  bench%s" % (" (full)" if full else ""))
         probe = BenchProbe(step, a.ya_cache_root or os.environ.get("YA_CACHE_DIR") or
@@ -885,8 +893,8 @@ class Follower:
                           rec["bench"]["ninja_warm"].get("failed"), step))
         if rc != 0:
             raise Stop("bench", "the bench build of %s failed (rc %d): %s\nLogs: %s/bench*.log. A finding of "
-                       "the incremental build: look into it, do not fix it in the bench tree; run again to "
-                       "measure again, or --run --skip-bench to go on without the measurement."
+                       "the incremental build: look into it, do not fix it in the bench tree; --run --bench "
+                       "measures again, or --run --skip-bench to go on without the measurement."
                        % (self.git.short("HEAD"), rc, ", ".join(
                            "%s: %s" % (k, v.get("failed")) for k, v in rec["bench"].items() if v.get("failed"))
                           or "see bench.log", step))
@@ -1033,12 +1041,14 @@ HINTS = {
     "build": "fix the work tree (uncommitted), then run again",
     "idempotence": "the generator changed the starting point: commit it (any message) or fix the "
                    "generator; run again",
-    "bench": "a finding of the incremental build, not fixed in the bench tree: run again to measure "
+    "bench": "a finding of the incremental build, not fixed in the bench tree: --run --bench measures "
              "again, or --run --skip-bench to go on without the measurement of this commit",
 }
 
 
 def bench_summary(b):
+    if isinstance(b, str):      # "skipped"
+        return "bench " + b
     n, y = (b or {}).get("ninja") or {}, (b or {}).get("ya") or {}
     parts = []
     if n:
@@ -1137,6 +1147,7 @@ def status(args):
         say("Bench:      %s @ %s  %s" % (args.bench_root, bgit.short("HEAD"), bgit.subject("HEAD")[:60]))
         say("            %s" % ("clean" if not bdirty else "CHANGES (the bench refuses to run): " +
                                 ", ".join(bdirty[:4])))
+        say("            measured only with --run --bench")
         if args.bench_out and not os.path.exists(os.path.join(args.bench_out, ".ninja_log")):
             say("            no .ninja_log in %s: the ninja warm-up will rebuild everything" % args.bench_out)
     say("")
@@ -1216,6 +1227,8 @@ def main():
                     help="with --run: go on for at most N commits of the upstream (the one stopped at "
                          "counts; default: all)")
     ap.add_argument("--show", default="10", metavar="N|all", help="pending commits in the status (default 10)")
+    ap.add_argument("--bench", action="store_true",
+                    help="with --run: measure the steps in the bench (--bench-root); off by default")
     ap.add_argument("--skip-bench", action="store_true",
                     help="with --run, only after a stop at the bench of a commit: marks the commit with "
                          "%s and goes on without its measurement" % SKIP_TRAILER)
@@ -1259,12 +1272,14 @@ def main():
         print("config: saved %s" % ", ".join("--" + k.replace("_", "-") for k in saved))
 
     if not args.run:
-        if args.skip_bench:
-            ap.error("--skip-bench goes on with the follow-up: give --run too")
+        if args.skip_bench or args.bench:
+            ap.error("--skip-bench and --bench go with --run")
         return status(args)
     if args.max_commits == "all":
         args.max_commits = None
-    if args.bench_root and not args.ya_out:
+    if args.bench and not args.bench_root:
+        ap.error("--bench needs --bench-root")
+    if args.bench and not args.ya_out:
         ap.error("--bench-root needs --ya-out")
     lock = open(os.path.join(args.state, "lock"), "w")
     try:
