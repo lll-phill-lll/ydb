@@ -1,12 +1,16 @@
 unittest_executable("ut") {
   deps = [
     "//library/cpp/testing/unittest",
+    "//ydb/core/base",
+    "//ydb/core/protos",
     "//ydb/core/sys_view/common",
     "//ydb/core/sys_view/processor",
     "//ydb/core/sys_view/service",
+    "//ydb/core/tablet_flat",
     "//ydb/core/tablet_flat/test/libs/table",  # peerdir only
     "//ydb/core/testlib",
     "//ydb/core/testlib/basics",
+    "//ydb/core/tx/scheme_cache",
     "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
     "//yql/essentials/sql/pg_dummy",  # peerdir only
   ]
