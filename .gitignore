@@ -121,5 +121,4 @@ path.bash.inc
 # Local configuration for `ya`
 /local.ymake
 
-# build/gn/scripts/build_stats.py
-/.gn_build_stats/
+/.ydb-build/
