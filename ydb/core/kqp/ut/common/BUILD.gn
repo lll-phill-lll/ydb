@@ -4,6 +4,7 @@ library("common") {
   public_deps = [
     "//contrib/libs/apache/arrow",
     # "//library/cpp/json",
+    # "//library/cpp/logger",
     # "//library/cpp/testing/unittest",
     # "//library/cpp/threading/future",
     # "//library/cpp/yson",
@@ -29,7 +30,6 @@ library("common") {
 
   deps = [
     # "//contrib/libs/highwayhash",  # peerdir only
-    # "//library/cpp/logger",
     # "//library/cpp/testing/common",
     # "//ydb/core/formats/arrow",
     "//ydb/core/formats/arrow/program/olap_kernels",  # peerdir only

@@ -1,5 +1,7 @@
 unittest_executable("runtime") {
   deps = [
+    "//library/cpp/logger",
+    "//library/cpp/testing/unittest",
     "//ydb/core/kqp",  # peerdir only
     "//ydb/core/kqp/counters",
     "//ydb/core/kqp/host",  # peerdir only
@@ -12,6 +14,7 @@ unittest_executable("runtime") {
 
   sources = [
     "kqp_hash_shuffle_ut.cpp",
+    "kqp_log_capture_ut.cpp",
     "kqp_re2_ut.cpp",
     "kqp_scan_logging_ut.cpp",
     "kqp_scan_spilling_ut.cpp",
