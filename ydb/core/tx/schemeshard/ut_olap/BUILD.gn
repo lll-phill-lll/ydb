@@ -11,7 +11,7 @@ unittest_executable("ut_olap") {
     "//ydb/core/protos",
     "//ydb/core/scheme_types",
     "//ydb/core/testlib/actors",
-    "//ydb/core/testlib/default",  # peerdir only
+    "//ydb/core/testlib/pg",  # peerdir only
     "//ydb/core/tx",  # peerdir only
     "//ydb/core/tx/columnshard",
     "//ydb/core/tx/columnshard/engines/changes/abstract",
@@ -41,8 +41,8 @@ unittest_executable("ut_olap") {
     "retro_spans=spans",
     "topic_rpc=persqueue_v1",
     "wasm=engine",
-    "yql_pg_runtime=pg_dummy",
-    "yql_pg_sql_translator=pg_dummy",
+    "yql_pg_runtime=pg_wrapper",
+    "yql_pg_sql_translator=pg",
     "yt_codegen=llvm16",
   ]
 }

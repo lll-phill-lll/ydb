@@ -13,7 +13,6 @@ library("columns") {
     "//ydb/core/scheme",
     # "//ydb/core/tx/schemeshard",
     "//yql/essentials/minikql",
-    # "//yql/essentials/parser/pg_wrapper",
   ]
 
   sources = [
