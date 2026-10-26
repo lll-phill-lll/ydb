@@ -235,7 +235,8 @@ def run_boundaries(entries):
 
 def last_run(db, build_dir, entries):
     """The entries of the last ninja run: the latest entry of each output that the previous
-    `record` didn't see, those after the last run boundary among them."""
+    `record` didn't see, those after the last run boundary among them; and the index in
+    `entries` where the run starts (the entries before it are the state it started from)."""
     state = dict(((o, (s, e, m, h)) for o, s, e, m, h in db.c.execute(
         "SELECT output, start_ms, end_ms, mtime, cmdhash FROM log_state WHERE build_dir = ?", (build_dir,))))
     latest = {}
@@ -245,11 +246,9 @@ def last_run(db, build_dir, entries):
                    if state.get(o) != (entries[i].start, entries[i].end, entries[i].mtime, entries[i].cmdhash))
     seq = [entries[i] for i in fresh]
     cut = run_boundaries(seq)
-    skipped = 0
-    if cut:
-        skipped = cut[-1]
-        seq = seq[cut[-1]:]
-    return seq, skipped, bool(state)
+    skipped = cut[-1] if cut else 0
+    start = fresh[skipped] if fresh else len(entries)
+    return seq[skipped:], skipped, bool(state), start
 
 
 class Graph(object):
@@ -510,13 +509,13 @@ def record(args):
                  % (build_dir, ", ".join(map(str, busy))))
     db = Db(args.db or default_db(source_root))
     entries = read_log(build_dir)
-    seq, skipped, known = last_run(db, build_dir, entries)
+    seq, skipped, known, start = last_run(db, build_dir, entries)
     if not seq:
         log("no commands since the last record")
         return
     if skipped:
         log("note: %d earlier commands not recorded (an unrecorded run before the last one)" % skipped)
-    if not known:
+    if not known and start == 0:
         log("note: the first record of %s: why commands ran is unknown" % build_dir)
 
     log("reading the ninja manifest...")
@@ -533,6 +532,10 @@ def record(args):
     for o, m, h in db.c.execute("SELECT output, mtime, cmdhash FROM log_state WHERE build_dir = ?", (build_dir,)):
         state[o] = m
         prev_hash[o] = h
+    # the runs not recorded (a warm-up) are in .ninja_log too: the last run started from them
+    for e in entries[:start]:
+        state[e.output] = e.mtime
+        prev_hash[e.output] = e.cmdhash
 
     cmds = []
     for e in seq:

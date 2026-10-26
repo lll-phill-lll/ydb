@@ -16,6 +16,11 @@ template("clang_toolchain") {
 
     sysroot = "--sysroot=/home/ilezhankin/.ya/tools/v4/243881345"
 
+    _abs_root = string_replace(string_replace(rebase_path("//.") + "/", "/./", "/"), "//", "/")
+    _abs_build = string_replace(string_replace(rebase_path(root_build_dir) + "/", "/./", "/"), "//", "/")
+    _rel_root = string_replace(rebase_path("//.", root_build_dir) + "/", "/./", "/")
+    _relative_deps = rebase_path("//build/gn/scripts/relative_deps.sh", root_build_dir)
+
     tool("stamp") {
       command = "touch {{output}}"
       description = "STAMP {{output}}"
@@ -50,7 +55,7 @@ template("clang_toolchain") {
     }
 
     tool("cxx") {
-      command_launcher = cc_wrapper
+      command_launcher = "sh $_relative_deps $_abs_build $_abs_root $_rel_root $cc_wrapper"
       precompiled_header_type = "gcc"
       depfile = "{{output}}.d"
       command = "$cxx $sysroot -MD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} -c {{source}} -o {{output}}"
