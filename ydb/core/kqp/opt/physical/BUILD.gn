@@ -26,8 +26,8 @@ library("physical") {
 
   deps = [
     # "//library/cpp/iterator",
+    # "//ydb/core/base",
     # "//ydb/core/kqp/expr_nodes",
-    "//ydb/core/kqp/opt/physical/effects",
     "//ydb/core/kqp/opt:helpers",
     "//ydb/core/kqp/provider",
     # "//ydb/core/scheme",
@@ -43,11 +43,25 @@ library("physical") {
     # "//ydb/public/lib/scheme_types",
     "//yql/essentials/core/peephole_opt",
     # "//yql/essentials/core/sql_types",
+    # "//yql/essentials/providers/common/provider",
     "//yql/essentials/providers/common/transform",
     # "//yql/essentials/public/issue",
   ]
 
   sources = [
+    "effects/kqp_opt_phy_delete_index.cpp",
+    "effects/kqp_opt_phy_effects.cpp",
+    "effects/kqp_opt_phy_fulltext_index.cpp",
+    "effects/kqp_opt_phy_indexes.cpp",
+    "effects/kqp_opt_phy_insert.cpp",
+    "effects/kqp_opt_phy_insert_index.cpp",
+    "effects/kqp_opt_phy_returning.cpp",
+    "effects/kqp_opt_phy_uniq_helper.cpp",
+    "effects/kqp_opt_phy_update.cpp",
+    "effects/kqp_opt_phy_update_index.cpp",
+    "effects/kqp_opt_phy_upsert_defaults.cpp",
+    "effects/kqp_opt_phy_upsert_index.cpp",
+    "effects/kqp_opt_phy_vector_index.cpp",
     "kqp_opt_phy.cpp",
     "kqp_opt_phy_build_stage.cpp",
     "kqp_opt_phy_limit.cpp",

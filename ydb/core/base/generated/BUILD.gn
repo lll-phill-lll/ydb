@@ -23,6 +23,7 @@ template("codegen") {
     action_foreach(_gen_target) {
         script = "//build/gn/scripts/run.py"
         sources = invoker.sources
+        inputs = [ "//ydb/core/protos/feature_flags.proto" ]
         outputs = [ "$_output" ]
 
         _codegen = ":codegen($tool_toolchain)"

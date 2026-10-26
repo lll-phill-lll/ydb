@@ -10,11 +10,16 @@ touches that tree -- and builds the same targets both ways, one after another:
          of the dirs of the labels of those groups of the root BUILD.gn), with
          its own local cache (--ya-cache-root, the tools stay in ~/.ya/tools)
 
---warm: before moving, ya builds the --ya-dirs (those of them that exist there)
-in the previous commit, not measured: ya builds only some targets each time,
-and its cache must hold them as of the previous commit -- as the tree of a
-developer who works on them -- for the measurement to cost the commit alone.
-Only the previous commit's results get into the cache, nothing of this one.
+--warm: before moving, both build the previous commit, not measured, so that
+the measurement costs the commit alone:
+  ninja  gn gen + ninja <targets>: normally nothing to do (the bench build dir
+         holds the previous commit), but it catches a build dir that is not
+         up to date (a failed bench, a lost .ninja_log, new args.gn or tools);
+         a failure stops the bench before moving
+  ya     the --ya-dirs (those of them that exist there): ya builds only some
+         targets each time, and its cache must hold them as of the previous
+         commit -- as the tree of a developer who works on them
+Only the previous commit's results get into the caches, nothing of this one.
 
 Measured: wall time; CPU time of the whole machine (/proc/stat: the compiler
 cache daemon compiles, not a child of the build -- the machine must be idle,
@@ -133,10 +138,11 @@ def log_entries(path, offset):
     return outs
 
 
-def run_ninja(args, env, log_dir):
+def run_ninja(args, env, log_dir, name="bench_ninja"):
     res = {}
     t = time.time()
-    with open(os.path.join(log_dir, "bench_gn_gen.log"), "w") as f:
+    gen_log = "bench_gn_gen.log" if name == "bench_ninja" else name + "_gn_gen.log"
+    with open(os.path.join(log_dir, gen_log), "w") as f:
         rc = subprocess.run(["gn", "gen", "--script-executable=" + args.script_executable, args.out],
                             cwd=args.root, stdout=f, stderr=subprocess.STDOUT, env=env).returncode
     res["gen"] = round(time.time() - t, 1)
@@ -145,7 +151,7 @@ def run_ninja(args, env, log_dir):
     ninja_log = os.path.join(args.out, ".ninja_log")
     offset = os.path.getsize(ninja_log) if os.path.exists(ninja_log) else 0
     dc0, c0, t = dc_stats(), cpu_busy(), time.time()
-    log = os.path.join(log_dir, "bench_ninja.log")
+    log = os.path.join(log_dir, name + ".log")
     with open(log, "w") as f:
         rc = subprocess.run(["ninja", "-C", args.out] + args.targets, stdout=f, stderr=subprocess.STDOUT,
                             env=dict(env, NINJA_STATUS="[%f/%t] ")).returncode
@@ -165,6 +171,8 @@ def run_ninja(args, env, log_dir):
     res["dist_clang"] = {k: dc1[k] - dc0.get(k, 0) for k in dc1 if dc1[k] != dc0.get(k, 0)}
     if rc != 0:
         res["failed"] = "ninja"
+    if name != "bench_ninja":
+        return res
     stats = os.path.join(os.path.dirname(os.path.abspath(__file__)), "build_stats.py")
     with open(os.path.join(log_dir, "bench_build_stats.log"), "w") as f:
         subprocess.run([args.python, stats, "record", args.out, "--status", str(rc), "--label", "follow",
@@ -258,6 +266,11 @@ def trailers(r):
                    "dist-hits=%s" % (y.get("graph"), y.get("wall"), y.get("cpu"), y.get("executed"),
                                      k.get("CC", 0) + k.get("AS", 0), k.get("LD", 0), y.get("local_hits"),
                                      y.get("dist_hits")))
+    nw, yw = r.get("ninja_warm"), r.get("ya_warm")
+    if nw or yw:
+        out.append("GN-Bench-Warm: %s" % " ".join(
+            ["ninja=%ss/%s-actions" % (nw.get("wall"), nw.get("actions"))] * bool(nw)
+            + ["ya=%ss/%s-executed" % (yw.get("wall"), yw.get("executed"))] * bool(yw)))
     if r.get("ya_dirs"):
         d = r["ya_dirs"]
         out.append("GN-Bench-Ya-Targets: %s" % (" ".join(d) if len(d) <= 6 else "%s ... (%d)" % (" ".join(d[:5]), len(d))))
@@ -280,7 +293,8 @@ def main():
     ap.add_argument("--order", default="ninja,ya")
     ap.add_argument("--targets", nargs="+", default=DEFAULT_TARGETS, help="of ninja")
     ap.add_argument("--ya-dirs", nargs="+", help="of ya make (default: the dirs of --targets)")
-    ap.add_argument("--warm", action="store_true", help="ya builds --ya-dirs in the previous commit first")
+    ap.add_argument("--warm", action="store_true",
+                    help="ninja (--targets) and ya (--ya-dirs) build the previous commit first")
     ap.add_argument("--env", action="append", default=[], metavar="NAME=VALUE", help="for gn gen and ninja")
     ap.add_argument("--max-load", type=float, help="default: 5%% of the CPUs")
     ap.add_argument("--idle-timeout", type=int, default=900)
@@ -302,9 +316,22 @@ def main():
     if git(args.root, "status", "--porcelain"):
         sys.exit("follow_bench.py: the bench work tree has changes")
     prev = git(args.root, "rev-parse", "HEAD")
+    ninja_warm = None
+    if args.warm:
+        say("ninja warm-up in %s: %s" % (prev[:11], " ".join(args.targets)))
+        nw = run_ninja(args, env, log_dir, "bench_ninja_warm")
+        ninja_warm = {k: nw.get(k) for k in ("rc", "gen", "wall", "actions", "compiles", "links", "failed")
+                      if k in nw}
+        say("ninja warm-up: rc %s, wall %ss, %s actions" % (nw.get("rc"), nw.get("wall"), nw.get("actions")))
+        if nw.get("rc") != 0:
+            with open(args.result, "w") as f:
+                json.dump({"commit": args.commit, "from": prev, "ninja_warm": ninja_warm, "trailers": []},
+                          f, indent=1)
+            return 1
     warm = None
     if args.warm and args.ya_dirs:
         there = [d for d in args.ya_dirs if os.path.exists(os.path.join(args.root, d, "ya.make"))]
+    if args.warm and args.ya_dirs and there:     # no dirs: ya make would build the whole root
         say("ya warm-up in %s: %s" % (prev[:11], " ".join(there)))
         w = run_ya(args, there, log_dir, "bench_ya_warm")
         warm = {k: w.get(k) for k in ("rc", "wall", "executed", "executed_by_kind", "local_hits")}
@@ -318,7 +345,7 @@ def main():
     dirs = args.ya_dirs or ya_dirs(args.root, target_labels(args.root, args.targets))
     missing = [d for d in dirs if not os.path.exists(os.path.join(args.root, d, "ya.make"))]
     dirs = [d for d in dirs if d not in missing]
-    result.update(ya_dirs=dirs, ya_missing=missing, ya_warm=warm)
+    result.update(ya_dirs=dirs, ya_missing=missing, ya_warm=warm, ninja_warm=ninja_warm)
     rc = 0
     for side in order:
         say("%s %s" % (side, result["commit"][:11]))

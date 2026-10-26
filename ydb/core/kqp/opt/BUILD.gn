@@ -53,7 +53,6 @@ library("opt") {
     "//ydb/core/kqp/opt/logical",
     "//ydb/core/kqp/opt/peephole",
     "//ydb/core/kqp/opt/physical",
-    "//ydb/core/kqp/opt/physical/effects",  # peerdir only
     "//ydb/core/kqp/opt/rbo",
     "//ydb/core/protos",
     # "//ydb/core/statistics",

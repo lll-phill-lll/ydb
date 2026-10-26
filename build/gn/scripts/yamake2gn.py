@@ -3242,33 +3242,50 @@ def mark_test_only(root, rendered, node_module, test_mods):
     return out, test, edge_only, conflicts
 
 
-PCH_TARGETS = "build/gn/pch/targets.gni"   # pch_targets; the PCH of //<dir>:<name> is build/gn/pch/<dir>/<name>.h
+PCH_DIR = "build/gn/pch"
+PCH_TARGETS = PCH_DIR + "/targets.gni"   # pch_mode "per_target": the PCH of //<dir>:<name> is <dir>/<name>.h
+PCH_GROUPS = PCH_DIR + "/groups.gni"     # pch_mode "global": the PCH of group <name> is <name>/pch.h, pch.cc
+_PCH_LIST_RE = re.compile(r'\bpch_targets\s*=\s*\[([^\]]*)\]')
+_PCH_GROUP_RE = re.compile(r'\bname\s*=\s*"([^"]+)"\s*targets\s*=\s*\[([^\]]*)\]')
+_QUOTED_LABEL_RE = re.compile(r'"(//[^"]+)"')
 
 
 def stale_pch(root, rendered):
-    """[(label or header, why)] of build/gn/pch: a target of pch_targets there
-    is no more (folded into another one, renamed), with no header, or a header
-    of no target -- the PCH would silently not apply."""
-    text = read_text(os.path.join(root, PCH_TARGETS))
-    if text is None:
-        return []
-    labels = re.findall(r'"(//[^"]+)"', text)
-    out, wanted = [], set()
-    files = {}
-    for label in labels:
+    """[(mode, label or file, why)] of build/gn/pch, both PCH modes at once (the
+    mode is chosen per build dir, in args.gn): a target of pch_targets or an
+    exact target of a group there is no more (folded into another one,
+    renamed), a target or a group with no header, or a file of build/gn/pch no
+    mode uses -- the PCH would silently not apply."""
+    out, wanted, files = [], set(), {}
+
+    def missing_target(label):
         d, name = _label_node(label, "")
-        wanted.add(os.path.join("build/gn/pch", d, name + ".h"))
         if d not in files:
             files[d] = {n for _, n, _, _ in target_blocks(buildgn_text(root, rendered, d))}
-        if name not in files[d]:
-            out.append((label, "no such target"))
-        if not os.path.exists(os.path.join(root, "build/gn/pch", d, name + ".h")):
-            out.append((label, "no header build/gn/pch/%s/%s.h" % (d, name)))
-    for d, _, fs in os.walk(os.path.join(root, "build/gn/pch")):
+        return name not in files[d]
+
+    def need(mode, item, rel):
+        wanted.add(rel)
+        if not os.path.exists(os.path.join(root, rel)):
+            out.append((mode, item, "no file " + rel))
+
+    m = _PCH_LIST_RE.search(read_text(os.path.join(root, PCH_TARGETS)) or "")
+    for label in _QUOTED_LABEL_RE.findall(m.group(1) if m else ""):
+        d, name = _label_node(label, "")
+        if missing_target(label):
+            out.append(("per_target", label, "no such target"))
+        need("per_target", label, os.path.join(PCH_DIR, d, name + ".h"))
+    for group, targets in _PCH_GROUP_RE.findall(read_text(os.path.join(root, PCH_GROUPS)) or ""):
+        for f in ("pch.h", "pch.cc"):
+            need("global", "group " + group, os.path.join(PCH_DIR, group, f))
+        for label in _QUOTED_LABEL_RE.findall(targets):
+            if "*" not in label and missing_target(label):
+                out.append(("global", label, "no such target (group %s)" % group))
+    for d, _, fs in os.walk(os.path.join(root, PCH_DIR)):
         for f in fs:
             rel = os.path.relpath(os.path.join(d, f), root)
-            if f.endswith(".h") and rel not in wanted:
-                out.append((rel, "not in pch_targets"))
+            if f.endswith((".h", ".cc")) and rel not in wanted:
+                out.append(("unused", rel, "in no PCH mode"))
     return out
 
 
@@ -3836,7 +3853,7 @@ class Report:
         self.link_select_defaulted = []  # (program or test, slot, value): DEFAULT_PROVIDER selected
         self.link_select_missing = []    # (program or test, slot): its interface, no provider, no default
         self.slot_defaults_bad = []      # (dir or slot, why): a broken `# gn: default provider`
-        self.pch_stale = []            # (label or header, why), see stale_pch
+        self.pch_stale = []            # (mode, label or file, why), see stale_pch
         self.pruned = []               # labels --prune-root-groups dropped from the root BUILD.gn
         self.sink_no_target = []       # (program or test, dep on a module of no GN target: commented)
 
@@ -3911,9 +3928,9 @@ class Report:
             for l in self.pruned:
                 print("  %s" % l, file=o)
         if self.pch_stale:
-            print("\nERROR: PCH of build/gn/pch that applies to nothing (%s):" % PCH_TARGETS, file=o)
-            for x, why in self.pch_stale:
-                print("  %-58s %s" % (x, why), file=o)
+            print("\nERROR: PCH of build/gn/pch that applies to nothing (%s, %s):" % (PCH_TARGETS, PCH_GROUPS), file=o)
+            for mode, x, why in self.pch_stale:
+                print("  %-10s %-58s %s" % (mode, x, why), file=o)
         if self.link_select_conflicts:
             print("\nERROR: several providers of a link slot in the PEERDIR closure (ya fails too; none selected):", file=o)
             for d, slot, values in self.link_select_conflicts:

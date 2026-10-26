@@ -13,7 +13,7 @@ unittest_executable("ut_double_indexed") {
   link_select = [
     "YqlServicePolicy=exception_policy",
     "allocator=tcmalloc",
-    "minikql_codegen=llvm16",
+    "minikql_codegen=no_llvm",
     "retro_spans=spans",
     "topic_rpc=persqueue_v1",
     "wasm=wasm_default",

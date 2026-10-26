@@ -19,7 +19,7 @@ unittest_executable("ut_vdisk_io") {
   link_select = [
     "YqlServicePolicy=stub",
     "allocator=tcmalloc",
-    "minikql_codegen=llvm16",
+    "minikql_codegen=no_llvm",
     "retro_spans=spans",
     "topic_rpc=persqueue_v1",
     "wasm=wasm_default",
