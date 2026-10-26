@@ -40,6 +40,7 @@ unittest_executable("ut") {
   ]
 
   sources = [
+    "//ydb/core/mind/hive/event_history_ut.cpp",
     "//ydb/core/mind/hive/hive_impl_ut.cpp",
     "//ydb/core/mind/hive/hive_ut.cpp",
     "//ydb/core/mind/hive/object_distribution_ut.cpp",
