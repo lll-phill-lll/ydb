@@ -30,6 +30,7 @@ unittest_executable("ut_restore") {
     "//ydb/public/api/protos",
     "//ydb/public/lib/ydb_cli/dump/files",
     "//yql/essentials/parser/pg_wrapper",  # peerdir only
+    "//yql/essentials/public/issue/protos",
     "//yql/essentials/public/udf",
     "//yql/essentials/sql/pg",  # peerdir only
     "//yql/essentials/types/binary_json",
