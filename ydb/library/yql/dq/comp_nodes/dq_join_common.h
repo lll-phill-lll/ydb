@@ -708,7 +708,12 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                 table.MarkUsed(tableMatch);
                 if constexpr (Join.Kind == EJoinKind::Inner || Join.Kind == EJoinKind::Left ||
                               Join.Kind == EJoinKind::Cross) {
-                    consume(TSides<TSingleTuple>{.Build = tableMatch, .Probe = probeRow});
+                    const TSides<TSingleTuple> sides{.Build = tableMatch, .Probe = probeRow};
+                    if constexpr (requires { consume(sides, table); }) {
+                        consume(sides, table);
+                    } else {
+                        consume(sides);
+                    }
                 }
             };
             if constexpr (IsGrid) {
@@ -797,6 +802,20 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                         probeBucket = std::move(thisBucket);
                     }
                 }
+                if constexpr (!IsGrid && (Join.Kind == EJoinKind::Inner || (Join.Kind == EJoinKind::Left && Join.Preserved == ESide::Probe))) {
+                    if constexpr (requires(std::vector<TTable*> t) { consume.OnBuildReady(t); }) {
+                        std::vector<TTable*> tables;
+                        for (auto& bucket : state.ProbeState.Buckets) {
+                            if (auto* t = std::get_if<TTable>(&bucket)) {
+                                tables.push_back(t);
+                            } else {
+                                tables.clear();
+                                break;
+                            }
+                        }
+                        SharedBuild_ = !tables.empty() && consume.OnBuildReady(tables);
+                    }
+                }
                 State_ = Probing{*this, std::move(state.ProbeState)};
             } else {
                 TTable* table = std::get_if<TTable>(&state.ProbeState.Buckets[*smallestBucket]);
@@ -858,7 +877,7 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                     }
                 }
             } else {
-                switch (state.Spiller.SpillWhile(notEnoughMemory)) {
+                switch (SharedBuild_ ? DontHavePages : state.Spiller.SpillWhile(notEnoughMemory)) {
                 case Spilling:
                     return WaitWhileSpilling();
                 case FinishedSpilling:
@@ -1157,6 +1176,7 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
     Sources Sources_;
     std::variant<Init, FetchingBuild, BuildingInMemoryTable, Probing, DumpRestOfPages, JoinPairsOfPartitions, Finish>
         State_ = Init{};
+    bool SharedBuild_ = false;
 };
 } // namespace NJoinPackedTuples
 

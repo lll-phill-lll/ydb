@@ -154,6 +154,43 @@ struct TRenamesScalarOutput : TPackedTupleOutputBase<Join, IScalarLayoutConverte
         }
     }
 
+    struct TConsume {
+        TRenamesScalarOutput& Self;
+        decltype(std::declval<TBase&>().MakeConsumeFn()) Base;
+
+        void operator()(TSides<TSingleTuple> tuples) {
+            Base(tuples);
+        }
+
+        void operator()(TSingleTuple tuple) {
+            if constexpr (Join.Kind == EJoinKind::Left) {
+                if (Self.Shared_) {
+                    Self.AppendShared(tuple, kNullRowId);
+                    return;
+                }
+            }
+            Base(tuple);
+        }
+
+        template <typename TTable>
+        void operator()(TSides<TSingleTuple> tuples, const TTable& table) {
+            if (Self.Shared_) {
+                Self.AppendShared(tuples.Probe, table.RowId(tuples.Build));
+            } else {
+                Base(tuples);
+            }
+        }
+
+        template <typename TTable>
+        bool OnBuildReady(const std::vector<TTable*>& tables) {
+            return Self.PrepareShared(tables);
+        }
+    };
+
+    auto MakeConsumeFn() {
+        return TConsume{*this, TBase::MakeConsumeFn()};
+    }
+
     TFlushResult Flush() {
         TFlushResult res;
         const i64 nItems = this->SizeTuples();
@@ -175,12 +212,24 @@ struct TRenamesScalarOutput : TPackedTupleOutputBase<Join, IScalarLayoutConverte
             }
         } else {
             for (ESide side : EachSide) {
+                if (Shared_ && side == ESide::Build) {
+                    continue;
+                }
                 auto& values = Values_.SelectSide(side);
                 values.resize(nItems * Widths_.SelectSide(side));
                 this->Converters_.SelectSide(side)->UnpackBatch(res.Packs.SelectSide(side), values.data());
             }
             for (i64 tupleIndex = 0; tupleIndex < nItems; ++tupleIndex) {
                 for (auto rename : *this->Renames_) {
+                    if (Shared_ && rename.Side == ESide::Build) {
+                        const ui32 id = ReadUnaligned<ui32>(res.Packs.Build.PackedTuples.data() + tupleIndex * sizeof(ui32));
+                        if (id == kNullRowId) {
+                            res.Buffer.emplace_back();
+                        } else {
+                            res.Buffer.push_back(SharedValues_[static_cast<size_t>(id) * Widths_.Build + rename.Index]);
+                        }
+                        continue;
+                    }
                     const auto& values = Values_.SelectSide(rename.Side);
                     res.Buffer.push_back(values[tupleIndex * Widths_.SelectSide(rename.Side) + rename.Index]);
                 }
@@ -191,8 +240,47 @@ struct TRenamesScalarOutput : TPackedTupleOutputBase<Join, IScalarLayoutConverte
     }
 
 private:
+    static constexpr ui32 kNullRowId = std::numeric_limits<ui32>::max();
+    static constexpr i64 kSharedBuildMaxRows = 1 << 16;
+
+    void AppendShared(TSingleTuple probe, ui32 buildRowId) {
+        this->Output_.Probe.AppendTuple(probe, this->Converters_.Probe->GetTupleLayout());
+        auto& build = this->Output_.Build;
+        const size_t offset = build.PackedTuples.size();
+        build.PackedTuples.resize(offset + sizeof(ui32));
+        WriteUnaligned<ui32>(build.PackedTuples.data() + offset, buildRowId);
+        ++build.NTuples;
+    }
+
+    template <typename TTable>
+    bool PrepareShared(const std::vector<TTable*>& tables) {
+        const int width = Widths_.Build;
+        i64 rows = 0;
+        for (auto* table : tables) {
+            rows += table->NTuples();
+        }
+        if (width == 0 || rows == 0 || rows > kSharedBuildMaxRows) {
+            return false;
+        }
+        SharedValues_.resize(static_cast<size_t>(rows) * width);
+        ui32 base = 0;
+        for (auto* table : tables) {
+            if (table->NTuples() == 0) {
+                continue;
+            }
+            table->SetRowIdBase(base);
+            auto pack = table->ExportRows();
+            this->Converters_.Build->UnpackBatch(pack, SharedValues_.data() + static_cast<size_t>(base) * width);
+            base += table->NTuples();
+        }
+        Shared_ = true;
+        return true;
+    }
+
     const TSides<int> Widths_;
     TSides<TMKQLVector<NUdf::TUnboxedValue>> Values_;
+    TMKQLVector<NUdf::TUnboxedValue> SharedValues_;
+    bool Shared_ = false;
 };
 
 template <TPhysicalJoin Join>

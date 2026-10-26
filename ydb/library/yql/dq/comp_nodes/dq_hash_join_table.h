@@ -114,6 +114,33 @@ class TNeumannJoinTable : public NNonCopyable::TMoveOnly {
         return Table_.Empty();
     }
 
+    i64 NTuples() const {
+        return BuildData_.NTuples;
+    }
+
+    IBlockLayoutConverter::TPackResult ExportRows() const {
+        IBlockLayoutConverter::TPackResult res;
+        res.NTuples = BuildData_.NTuples;
+        res.PackedTuples.resize(static_cast<size_t>(BuildData_.NTuples) * RowWidth_);
+        for (i64 i = 0; i < BuildData_.NTuples; ++i) {
+            std::memcpy(res.PackedTuples.data() + i * RowWidth_, Table_.PackedRow(i), RowWidth_);
+        }
+        res.Overflow = BuildData_.Overflow;
+        return res;
+    }
+
+    void SetRowIdBase(ui32 base) {
+        RowIdBase_ = base;
+        RowBase_ = Table_.PackedRow(0);
+        const size_t stride = BuildData_.NTuples > 1 ? Table_.PackedRow(1) - RowBase_ : 1;
+        RowInv_ = std::numeric_limits<ui64>::max() / stride + 1;
+    }
+
+    ui32 RowId(TSingleTuple tuple) const {
+        const ui64 offset = tuple.PackedData - RowBase_;
+        return RowIdBase_ + static_cast<ui32>((static_cast<unsigned __int128>(offset) * RowInv_) >> 64);
+    }
+
     ui64 RequiredMemoryForBuild(int nTuples) const {
         return Table_.RequiredMemoryForBuild(nTuples);
     }
@@ -206,6 +233,9 @@ class TNeumannJoinTable : public NNonCopyable::TMoveOnly {
     IBlockLayoutConverter::TPackResult BuildData_;
     NKikimr::NMiniKQL::NPackedTuple::TNeumannHashTable<false, false> Table_;
     size_t RowWidth_ = 0;
+    ui32 RowIdBase_ = 0;
+    const ui8* RowBase_ = nullptr;
+    ui64 RowInv_ = 0;
     bool TrackUsed_ = false;
     TMKQLVector<ui8> Used_;
 };
