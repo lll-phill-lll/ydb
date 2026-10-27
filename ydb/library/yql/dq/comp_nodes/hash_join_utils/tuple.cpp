@@ -896,7 +896,7 @@ void TTupleLayout::TupleDeepCopy(
         MKQL_ENSURE(to.size() <= std::numeric_limits<ui32>::max(), "tuple buffer exceeds ui32 range");
         ui32 offset = to.size();
         ui32 writeSize = range.size();
-        to.resize(offset + writeSize);
+        to.resize_uninitialized(offset + writeSize);
         std::memcpy(to.data() + offset, range.data(), writeSize);
     };
     ui32 initSize = outTuple.size();
