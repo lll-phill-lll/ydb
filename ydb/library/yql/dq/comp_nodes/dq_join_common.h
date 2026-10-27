@@ -1410,11 +1410,11 @@ struct TPackedTupleOutputBase : NNonCopyable::TMoveOnly {
     auto MakeConsumeFn() {
         struct ConsumeFn {
             TPackedTupleOutputBase& Self;
+            TSides<const NPackedTuple::TTupleLayout*> Layouts;
 
             void operator()(TSides<TSingleTuple> tuples) {
                 for (ESide side : EachSide) {
-                    Self.Output_.SelectSide(side).AppendTuple(tuples.SelectSide(side),
-                                                              Self.Converters_.SelectSide(side)->GetTupleLayout());
+                    Self.Output_.SelectSide(side).AppendTuple(tuples.SelectSide(side), Layouts.SelectSide(side));
                 }
             }
 
@@ -1428,11 +1428,13 @@ struct TPackedTupleOutputBase : NNonCopyable::TMoveOnly {
                     (*this)(row);
                 } else if constexpr (SemiOrOnlyJoin(Join.Kind)) {
                     Self.Output_.SelectSide(Join.Preserved)
-                        .AppendTuple(tuple, Self.Converters_.SelectSide(Join.Preserved)->GetTupleLayout());
+                        .AppendTuple(tuple, Layouts.SelectSide(Join.Preserved));
                 }
             }
         };
-        return ConsumeFn{*this};
+        return ConsumeFn{*this,
+                         TSides<const NPackedTuple::TTupleLayout*>{.Build = Converters_.Build->GetTupleLayout(),
+                                                                   .Probe = Converters_.Probe->GetTupleLayout()}};
     }
 
 protected:
