@@ -512,6 +512,7 @@ group("tests") {
         "//ydb/core/tx/replication/controller/ut_schema_change",
         "//ydb/core/tx/replication/controller/ut_stream_creator",
         "//ydb/core/tx/replication/controller/ut_target_discoverer",
+        "//ydb/core/tx/replication/controller/ut_worker_lifecycle",
         "//ydb/core/tx/replication/service/ut_json_change_record",
         "//ydb/core/tx/replication/service/ut_s3_writer",
         "//ydb/core/tx/replication/service/ut_table_writer",
