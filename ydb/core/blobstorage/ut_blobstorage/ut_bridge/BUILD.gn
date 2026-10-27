@@ -13,6 +13,7 @@ unittest_executable("ut_bridge") {
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_rejoin.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_syncer.cpp",
   ]
 
   include_dirs = [ "//ydb/core/blobstorage/ut_blobstorage" ]
