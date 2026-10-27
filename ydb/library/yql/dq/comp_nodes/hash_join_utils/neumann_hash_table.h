@@ -540,7 +540,7 @@ class TNeumannHashTable {
         }
     } 
 
-    bool GetRowMatch(const ui8 *const it, const ui8 *const row, const ui8 *const overflow, const ui8 **matchedRow) const {
+    Y_FORCE_INLINE bool GetRowMatch(const ui8 *const it, const ui8 *const row, const ui8 *const overflow, const ui8 **matchedRow) const {
         const THash &thash = ReadUnaligned<THash>(row);
 
         if (IsInplace_) {
