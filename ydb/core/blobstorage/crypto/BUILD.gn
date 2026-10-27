@@ -1,13 +1,7 @@
-# yamake2gn: keep  -- hand-written, do not regenerate
-
-avx512_source_set("chacha_512") {
-  sources = [ "chacha_512/chacha_512.cpp" ]
-}
-
 library("crypto") {
   public_deps = [
+    "//ydb/core/blobstorage/crypto/chacha_512",
     # "//ydb/library/actors/util",
-    ":chacha_512",
   ]
 
   deps = [

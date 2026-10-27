@@ -1,7 +1,7 @@
 library("tracing") {
   public_deps = [
     # "//library/cpp/yt/memory",
-    "//yt/yt/core",
+    "//yt/yt/core:_self",
   ]
 
   deps = [

@@ -1,5 +1,7 @@
 LIBRARY()
 
+# gn: anti-cycle facade
+
 INCLUDE(${ARCADIA_ROOT}/yt/ya_cpp.make.inc)
 
 INCLUDE(../ya_check_dependencies.inc)

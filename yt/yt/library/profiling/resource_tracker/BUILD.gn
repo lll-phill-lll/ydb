@@ -3,8 +3,8 @@ library("resource_tracker") {
     # "//library/cpp/yt/memory",
     # "//library/cpp/yt/misc",
     # "//library/cpp/yt/system",
-    # "//yt/yt/core",
-    # "//yt/yt/library/cgroup",
+    "//yt/yt/core:_self",
+    "//yt/yt/library/cgroup",
     # "//yt/yt/library/profiling",
     # "//yt/yt_proto/yt/core",  # peerdir only
   ]

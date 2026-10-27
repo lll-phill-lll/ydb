@@ -36,7 +36,7 @@ skipped (non-trivial):
   ydb/public/tools/federation_recipe DEPENDS,PY3_PROGRAM,PY_SRCS
   ydb/public/tools/lib/cmds PY23_LIBRARY,PY_SRCS
   ydb/public/tools/local_ydb PY3_PROGRAM,PY_SRCS
-  ydb/public/tools/ydb_recipe FILES,PY3_PROGRAM,PY_SRCS
+  ydb/public/tools/ydb_recipe PY3_PROGRAM,PY_SRCS
   ydb/services/ydb/backup_ut LDFLAGS
   ydb/tests/datashard/lib PY3_LIBRARY,PY_SRCS
   ydb/tests/fq/generic/utils PY3_LIBRARY,PY_SRCS,STYLE_PYTHON
@@ -56,7 +56,7 @@ skipped (non-trivial):
   ydb/tests/functional/udf_store/examples/md5 BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,LD_PLUGIN,STRIP
   ydb/tests/functional/udf_store/examples/oob BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,LD_PLUGIN
   ydb/tests/functional/udf_store/examples/prefix BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,LD_PLUGIN,STRIP
-  ydb/tests/functional/udf_store/examples/sdk BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,NO_LIBC,NO_PLATFORM,NO_RUNTIME,WHOLE_ARCHIVE
+  ydb/tests/functional/udf_store/examples/sdk BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,NO_LIBC,NO_RUNTIME,WHOLE_ARCHIVE
   ydb/tests/functional/udf_store/examples/throw BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,LD_PLUGIN
   ydb/tests/functional/udf_store/examples/with_helpers BUILD_ONLY_IF,DLL,EXPORT_ALL_DYNAMIC_SYMBOLS,LDFLAGS,LD_PLUGIN,STRIP
   ydb/tests/functional/udf_store/lib PY3_LIBRARY,PY_SRCS,STYLE_PYTHON
@@ -82,7 +82,7 @@ skipped (non-trivial):
   ydb/tests/olap/lib PY3_LIBRARY,PY_SRCS
   ydb/tests/oss/canonical PY23_LIBRARY,PY_SRCS
   ydb/tests/oss/ci PY3_LIBRARY,PY_SRCS
-  ydb/tests/oss/launch FILES,PY3_LIBRARY,PY_SRCS
+  ydb/tests/oss/launch PY3_LIBRARY,PY_SRCS
   ydb/tests/oss/ydb_sdk_import PY23_LIBRARY,PY_SRCS
   ydb/tests/sql/lib PY3_LIBRARY,PY_SRCS
   ydb/tests/stability/icv2_load PY3_PROGRAM,PY_SRCS
@@ -132,7 +132,7 @@ skipped (non-trivial):
   ydb/tests/tools/mdb_mock PY3_PROGRAM,PY_SRCS,STYLE_PYTHON
   ydb/tests/tools/nemesis/driver PY3_PROGRAM,PY_SRCS
   ydb/tests/tools/nemesis/library PY3_LIBRARY,PY_SRCS
-  ydb/tests/tools/s3_recipe FILES,PY3_PROGRAM,PY_SRCS,STYLE_PYTHON
+  ydb/tests/tools/s3_recipe PY3_PROGRAM,PY_SRCS,STYLE_PYTHON
   ydb/tests/tools/token_accessor_mock PY3_PROGRAM,PY_SRCS,STYLE_PYTHON
   ydb/tests/tools/ydb_serializable PY3_PROGRAM,PY_SRCS
   ydb/tests/tools/ydb_serializable/replay PY3_PROGRAM,PY_SRCS
@@ -152,4 +152,3 @@ skipped (non-trivial):
   ydb/tools/ydb_bench BUNDLE,PY3_PROGRAM,PY_SRCS,RESOURCE<ydb_bench/build_type=${BUILD_TYPE}>,RUN_PROGRAM
   ydb/tools/ydbd_slice PY3_LIBRARY,PY_SRCS
   ydb/tools/ydbd_slice/bin PY3_PROGRAM,PY_MAIN
-  yt/yt/library/ytprof/proto PROTO_NAMESPACE

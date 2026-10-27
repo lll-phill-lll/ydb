@@ -2828,7 +2828,7 @@ pch_groups = [
   },
   {
     name = "4"
-    targets = [ "//yt/yt/core:core" ]
+    targets = [ "//yt/yt/core:_self" ]
     deps = []
     cflags = [ "-mpclmul" ]
     defines = [ "LIBCXXRT" ]

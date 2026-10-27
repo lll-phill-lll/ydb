@@ -55,6 +55,10 @@ _IGNORED_SET_VARS = {
     "IDE_FOLDER",
     "PROTOC_TRANSITIVE_HEADERS",
     "RAGEL6_FLAGS",  # TODO: the code style only (-CG1 ...), see //build/gn/source_kinds.gni
+    # the grammar pieces CFLAGS(-D...) of yql/essentials/sql/v1/lexer/regex quote: in its private config
+    "GRAMMAR_STRING_CORE_SINGLE_DEFAULT", "GRAMMAR_STRING_CORE_DOUBLE_DEFAULT",
+    "GRAMMAR_MULTILINE_COMMENT_CORE_DEFAULT", "GRAMMAR_STRING_CORE_SINGLE_ANSI",
+    "GRAMMAR_STRING_CORE_DOUBLE_ANSI", "GRAMMAR_MULTILINE_COMMENT_CORE_ANSI",
 }
 TRIVIAL_MACROS = MODULE_MACROS | {
     "SRCS", "SRC", "PEERDIR", "RECURSE", "RECURSE_FOR_TESTS", "RECURSE_ROOT_RELATIVE", "END", "SUBSCRIBER",
@@ -78,6 +82,9 @@ TRIVIAL_MACROS = MODULE_MACROS | {
     "GLOBAL_SRCS",   # SRCS with every file GLOBAL
     "HEADERS",   # the dirs of the module's exported headers (ya's export only): nothing to build
     "EXTRALIBS",   # -> `libs` of the hand-written <target>_private_config
+    "NO_PLATFORM",   # no libc/libc++ deps in ya: GN adds none to a library anyway
+    "INCLUDE_ONCE", "NO_LTO",   # no LTO in GN; INCLUDE_ONCE: of an INCLUDE, already resolved
+    "FILES",   # files to export (ya's FILES): nothing to build
 }
 
 # SRC_<kind>(file flags...): a source compiled with flags GN gives every
@@ -95,12 +102,14 @@ PROTO_IGNORE_MACROS = {
     "PY_NAMESPACE", "NO_OPTIMIZE_PY_PROTOS", "NO_MYPY", "LICENSE", "LICENSE_TEXTS",
     "WITHOUT_LICENSE_TEXTS", "VERSION", "SUBSCRIBER", "MAVEN_GROUP_ID",
     "ORIGINAL_SOURCE", "NO_COMPILER_WARNINGS", "ADDINCL", "YQL_LAST_ABI_VERSION",
+    "ENABLE",   # of yt/gradle.inc: java/gradle only
     "CPP_PROTO_PLUGIN0", "CPP_PROTO_PLUGIN",   # -> extra_plugins
 }
 PROTO_TRIVIAL_MACROS = {
     "PROTO_LIBRARY", "SRCS", "PEERDIR", "RECURSE", "RECURSE_FOR_TESTS", "END",
     "GENERATE_ENUM_SERIALIZATION",   # -> serialize_enum_headers (on generated .pb.h)
     "USE_COMMON_GOOGLE_APIS",   # -> public dep on googleapis-common-protos
+    "PROTO_NAMESPACE",   # -> proto_public_include_dirs, see proto_import_dirs
     "GN_DIRECTIVES",
 } | PROTO_IGNORE_MACROS
 # Proto-provided deps that the GN protobuf_library template already injects:
@@ -1997,6 +2006,7 @@ class TargetSpec:
         self.proto_transitive_headers = True    # SET(PROTOC_TRANSITIVE_HEADERS "no"): False
         self.grpc = mod.grpc                    # GRPC()
         self.protoc_fatal_warnings = mod.protoc_fatal_warnings  # PROTOC_FATAL_WARNINGS()
+        self.proto_namespace = mod.proto_namespace  # PROTO_NAMESPACE(): an import root of the users
         self.sources = []                       # repo-relative, non-proto
         self.proto_sources = []                 # repo-relative .proto sources
         self.enum_headers = []                  # repo-relative (GENERATE_ENUM_SERIALIZATION)
@@ -3541,7 +3551,7 @@ def _render_target(tmpl, name, public_deps, deps, sources,
                    include_dirs=(), data_deps=(), data=(), test_sbr=(),
                    test_depends_unbuilt=(), link_select=(), proto_transitive_headers=True,
                    proto_imports=(), generate_grpc_services=False, short_name=False,
-                   protoc_fatal_warnings=False):
+                   protoc_fatal_warnings=False, proto_public_include_dirs=()):
     """`notes` maps a dep label to a trailing comment ("peerdir only")."""
     lines = ['%s("%s") {' % (tmpl, name)]
     notes = notes or {}
@@ -3605,6 +3615,9 @@ def _render_target(tmpl, name, public_deps, deps, sources,
         lines.append("    proto_imports = [")
         lines.extend('        "%s",' % l for l in proto_imports)
         lines.append("    ]")
+        lines.append("")
+    if proto_public_include_dirs:
+        lines.append("    proto_public_include_dirs = [%s]" % ", ".join('"%s"' % d for d in proto_public_include_dirs))
         lines.append("")
     if tmpl == "protobuf_library" and not proto_transitive_headers:
         lines.append("    proto_transitive_headers = false")
@@ -3816,6 +3829,8 @@ def render_spec(spec, host, remap, uncommented, private_configs=None, proto_labe
                               proto_transitive_headers=spec.proto_transitive_headers,
                               generate_grpc_services=spec.grpc and bool(spec.proto_sources),
                               protoc_fatal_warnings=spec.protoc_fatal_warnings and bool(spec.proto_sources),
+                              proto_public_include_dirs=["//" + spec.proto_namespace]
+                                                        if spec.proto_namespace and tmpl == "protobuf_library" else (),
                               # the libraries the .proto import: their `<target>_codegen`
                               proto_imports=sorted(render({l for l in spec.proto_public
                                                            if remap.get(l, l) in codegen_labels}),

@@ -2,7 +2,7 @@ unittest_executable("ut") {
   deps = [
     "//library/cpp/testing/unittest",
     "//ydb/core/blobstorage/crypto",
-    "//ydb/core/blobstorage/crypto:chacha_512",
+    "//ydb/core/blobstorage/crypto/chacha_512",
     "//ydb/library/actors/util",
   ]
 

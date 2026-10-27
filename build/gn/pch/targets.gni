@@ -8,7 +8,7 @@ pch_targets = [
   "//ydb/services/ydb/ut:ut",
   "//yql/essentials/minikql/comp_nodes/no_llvm:no_llvm",
   "//yt/yql/providers/yt/provider:provider",
-  "//yt/yt/core:core",
+  "//yt/yt/core:_self",
 ]
 
 # targets whose enum serialization (serialize_enum_headers) defines Out<> ... of

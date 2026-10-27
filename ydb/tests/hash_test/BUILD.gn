@@ -14,7 +14,7 @@ linked_executable("hash_test") {
     "//contrib/restricted/cityhash-1.0.2",
     "//library/cpp/getopt",
     "//ydb/core/blobstorage/crypto",
-    "//ydb/core/blobstorage/crypto:chacha_512",
+    "//ydb/core/blobstorage/crypto/chacha_512",
     "//ydb/library/actors/util",
     "//ydb/tests/hash_test/xxHash",
   ]

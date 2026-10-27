@@ -1,0 +1,5 @@
+protobuf_library("proto") {
+  sources = [ "profile.proto" ]
+
+  proto_public_include_dirs = [ "//yt" ]
+}

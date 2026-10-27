@@ -1,0 +1,13 @@
+config("chacha_512_private_config") {
+  cflags = [ "-mavx512f" ]
+}
+
+library("chacha_512") {
+  deps = [
+    # "//ydb/core/blobstorage/crypto",
+  ]
+
+  sources = [ "chacha_512.cpp" ]
+
+  configs = [ ":chacha_512_private_config" ]
+}

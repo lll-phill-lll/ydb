@@ -2,6 +2,6 @@ group("syncmap") {
   public_deps = [
     # "//library/cpp/yt/memory",
     # "//library/cpp/yt/system",
-    # "//yt/yt/core",
+    # "//yt/yt/core:_self",
   ]
 }
