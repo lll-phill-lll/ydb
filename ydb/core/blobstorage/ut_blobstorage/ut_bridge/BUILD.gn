@@ -3,9 +3,11 @@ unittest_executable("ut_bridge") {
     "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/blobstorage/ut_blobstorage/lib",
+    "//ydb/core/blobstorage/vdisk/huge",
   ]
 
   sources = [
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_assimilation.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_data_kind.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
