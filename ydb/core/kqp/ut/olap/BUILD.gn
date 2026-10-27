@@ -2,8 +2,10 @@ unittest_executable("olap") {
   public_deps = [
     "//contrib/libs/apache/arrow",
     "//library/cpp/json",
+    "//library/cpp/testing/unittest",
     "//ydb/core/kqp/ut/common",
     "//ydb/core/testlib",
+    "//ydb/library/conclusion",
     "//ydb/library/formats/arrow/simple_builder",
     "//ydb/public/sdk/cpp/src/client/table",
     "//ydb/public/sdk/cpp/src/client/types",
@@ -14,7 +16,6 @@ unittest_executable("olap") {
     "//contrib/libs/fmt",
     "//library/cpp/lwtrace",
     "//library/cpp/testing/hook",
-    "//library/cpp/testing/unittest",
     "//ydb/core/base",
     "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/kqp",  # peerdir only
