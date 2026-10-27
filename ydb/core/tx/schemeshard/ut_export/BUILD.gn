@@ -3,6 +3,7 @@ unittest_executable("ut_export") {
     "//contrib/libs/apache/arrow",
     "//contrib/libs/protobuf",
     "//library/cpp/getopt",  # peerdir only
+    "//library/cpp/json",
     "//library/cpp/regex/pcre",  # peerdir only
     "//library/cpp/svnversion",  # peerdir only
     "//library/cpp/testing/hook",
