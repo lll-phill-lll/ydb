@@ -705,7 +705,9 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                     }
                 }
                 found = true;
-                table.MarkUsed(tableMatch);
+                if constexpr (PreservedRowsInBuildTable()) {
+                    table.MarkUsed(tableMatch);
+                }
                 if constexpr (Join.Kind == EJoinKind::Inner || Join.Kind == EJoinKind::Left ||
                               Join.Kind == EJoinKind::Cross) {
                     consume(TSides<TSingleTuple>{.Build = tableMatch, .Probe = probeRow});

@@ -461,8 +461,8 @@ class TNeumannHashTable {
     // leaving slot at the slot to continue from
     void Apply(const ui8 *const row, const ui8 *const overflow, size_t& slot,
                std::predicate<const ui8*> auto onMatch) const {
-        MKQL_ENSURE(Layout_ != nullptr, "sanity check");
-        MKQL_ENSURE(!Directories_.empty() && Tuples_ != nullptr, "lookup to empty table?");
+        Y_ASSERT(Layout_ != nullptr);
+        Y_ASSERT(!Directories_.empty() && Tuples_ != nullptr);
 
         const THash thash = ReadUnaligned<THash>(row);
         const TBloom hashBloomTag = kBloomTags[thash.BloomTagSlot];
@@ -485,7 +485,7 @@ class TNeumannHashTable {
 
         if constexpr (!ConsecutiveDuplicates) {
             const ui8* it = begin + slot * BufferSlotSize_;
-            MKQL_ENSURE(it <= end, "Apply resume past the end of the directory");
+            Y_ASSERT(it <= end);
             for (; it != end; it += BufferSlotSize_) {
                 if (GetRowMatch(it, row, overflow, &matchedRow) && !onMatch(matchedRow)) {
                     slot = (it - begin) / BufferSlotSize_ + 1;
