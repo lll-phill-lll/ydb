@@ -1,11 +1,13 @@
 unittest_executable("ut_bridge") {
   deps = [
     "//ydb/core/blobstorage/base",
+    "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/blobstorage/ut_blobstorage/lib",
   ]
 
   sources = [
     "//ydb/core/blobstorage/ut_blobstorage/bridge_data_kind.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
   ]
 
