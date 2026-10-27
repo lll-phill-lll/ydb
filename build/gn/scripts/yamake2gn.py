@@ -73,6 +73,7 @@ TRIVIAL_MACROS = MODULE_MACROS | {
     "YQL_ABI_VERSION",   # -> yql_abi_version
     "CHECK_DEPENDENT_DIRS", # TODO: temporary ignore
     "STYLE_CPP",   # a clang-format check run as a test: nothing to build
+    "NO_LINT",     # opts out of the style checks: nothing to build
     "PROVIDES",  # -> link_slot_provides
     "ALLOCATOR",  # of a program or a test: its link_select, see link_selects
     "NO_UTIL",   # LIBRARY -> contrib_library (no default //util dep)
