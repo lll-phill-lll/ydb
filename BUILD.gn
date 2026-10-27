@@ -419,6 +419,7 @@ group("tests") {
         "//ydb/core/sys_view/processor/ut",
         "//ydb/core/sys_view/query_stats/ut",
         "//ydb/core/sys_view/service/ut",
+        "//ydb/core/sys_view/show_create/formatters/ut",
         "//ydb/core/sys_view/ut",
         "//ydb/core/sys_view/ut_large",
         "//ydb/core/tablet/ut",
