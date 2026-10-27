@@ -211,6 +211,7 @@ group("tests") {
         "//ydb/core/external_sources/ut",
         "//ydb/core/formats/arrow/accessor/composite/ut",
         "//ydb/core/formats/arrow/accessor/dictionary/ut",
+        "//ydb/core/formats/arrow/accessor/plain/ut",
         "//ydb/core/formats/arrow/accessor/sparsed/ut",
         "//ydb/core/formats/arrow/accessor/sub_columns/dense_encoding/ut",
         "//ydb/core/formats/arrow/accessor/sub_columns/ut",
