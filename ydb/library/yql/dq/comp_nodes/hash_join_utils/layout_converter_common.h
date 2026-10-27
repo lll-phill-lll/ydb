@@ -85,7 +85,17 @@ struct TPackResult {
         NTuples = 0;
     }
 
-    void AppendTuple(TSingleTuple tuple, const NPackedTuple::TTupleLayout* layout);
+    void AppendTuple(TSingleTuple tuple, const NPackedTuple::TTupleLayout* layout) {
+        if (layout->VariableColumns.empty()) {
+            const size_t offset = PackedTuples.size();
+            MKQL_ENSURE(offset <= std::numeric_limits<ui32>::max(), "tuple buffer exceeds ui32 range");
+            PackedTuples.resize_uninitialized(offset + layout->TotalRowSize);
+            std::memcpy(PackedTuples.data() + offset, tuple.PackedData, layout->TotalRowSize);
+        } else {
+            layout->TupleDeepCopy(tuple.PackedData, tuple.OverflowBegin, PackedTuples, Overflow);
+        }
+        NTuples++;
+    }
 };
 
 using TPackedTuple = std::vector<ui8, TMKQLAllocator<ui8>>;

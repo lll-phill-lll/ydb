@@ -3,9 +3,4 @@
 
 namespace NKikimr::NMiniKQL {
 
-void TPackResult::AppendTuple(TSingleTuple tuple, const NPackedTuple::TTupleLayout* layout) {
-    layout->TupleDeepCopy(tuple.PackedData, tuple.OverflowBegin, PackedTuples, Overflow);
-    NTuples++;
-}
-
 } // namespace NKikimr::NMiniKQL
