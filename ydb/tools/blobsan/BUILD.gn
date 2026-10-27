@@ -1,6 +1,7 @@
 linked_executable("blobsan") {
   deps = [
     "//library/cpp/containers/absl",
+    "//library/cpp/getopt",
     "//library/cpp/streams/bzip2",
     "//ydb/core/blobstorage",  # peerdir only
     "//ydb/core/blobstorage/groupinfo",
