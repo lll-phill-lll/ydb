@@ -8,6 +8,7 @@ unittest_executable("ut_bridge") {
 
   sources = [
     "//ydb/core/blobstorage/ut_blobstorage/bridge_assimilation.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_cluster_state.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_data_kind.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
