@@ -386,6 +386,7 @@ class Module:
         self.protoc_fatal_warnings = False  # PROTOC_FATAL_WARNINGS(): protoc --fatal_warnings
         self.no_util = False
         self.use_common_google_apis = False
+        self.proto_namespace = None  # PROTO_NAMESPACE dir: an import root of its users too, see proto_import_dirs
         self.resource_macros = []    # (macro, raw args) of RESOURCE* in file order
         self.global_srcs = False     # SRCS(GLOBAL ...): linked whenever PEERDIRed, see gen_spec
         self.yql_udf = False         # YQL_UDF*(), see YQL_UDF_MACROS
@@ -977,6 +978,10 @@ def parse_yamake(path, directory, root):
             mod.no_util = True
         elif name == "USE_COMMON_GOOGLE_APIS":
             mod.use_common_google_apis = True
+        elif name == "PROTO_NAMESPACE":
+            ns = [a for a in args if a not in ("GLOBAL", "WITH_GEN")]
+            if ns:
+                mod.proto_namespace = _norm_dir(ns[0])
         elif name in ("CPP_PROTO_PLUGIN0", "CPP_PROTO_PLUGIN"):
             if len(args) >= 2:
                 mod.proto_plugins.append((args[0], os.path.normpath(args[1])))
@@ -1499,6 +1504,8 @@ class Resolver:
         self._resolved = {}   # resolve(): its key -> its answer (the tree does not change in a run)
         self._modules = {}    # is_module(): dir -> its answer (nor do the modules' kinds)
         self._walked = {}     # _walk_up(): dir -> its answer
+        self._contrib_mods = {}       # contrib dir -> its Module (or None), parsed on demand
+        self._proto_import_dirs = {}  # proto_import_dirs(): dir -> its answer
         # include-side module dir -> the module it is folded into (INCLUDE_ROOT_REMAP)
         self.aliases = {}
         self.alias_parts = {}   # include-side module dir -> part of its alias target
@@ -1612,6 +1619,38 @@ class Resolver:
                 if owner is not None:
                     return self.owner(owner)
         return None
+
+    def _module(self, d):
+        """The Module of d; a contrib one is parsed on demand (mods has none)."""
+        if not d.startswith("contrib/"):
+            return self.mods.get(d)
+        if d not in self._contrib_mods:
+            path = os.path.join(self.root, d, "ya.make")
+            self._contrib_mods[d] = parse_yamake(path, d, self.root) if os.path.isfile(path) else None
+        return self._contrib_mods[d]
+
+    def proto_import_dirs(self, d):
+        """The dirs the .proto of module d import from besides the root: the
+        PROTO_NAMESPACE of d and of every module it PEERDIRs, directly or not
+        (ya: PROTO_ADDINCL(GLOBAL <namespace>)). USE_COMMON_GOOGLE_APIS is a
+        PEERDIR on contrib/libs/googleapis-common-protos there."""
+        if d not in self._proto_import_dirs:
+            out, seen, stack = [], {d}, [d]
+            while stack:
+                m = self._module(stack.pop())
+                if m is None:
+                    continue
+                if m.proto_namespace and m.proto_namespace not in out:
+                    out.append(m.proto_namespace)
+                peers = [_norm_dir(p) for p in m.peerdirs]
+                if m.use_common_google_apis:
+                    peers.append(GOOGLEAPIS_COMMON_PROTOS_LABEL[2:])
+                for q in peers:
+                    if q not in seen and q not in self.util_parts:
+                        seen.add(q)
+                        stack.append(q)
+            self._proto_import_dirs[d] = tuple(out)
+        return self._proto_import_dirs[d]
 
     def resolve(self, inc, is_quote, file_dir, include_dirs=()):
         # of an <include> the dir of the includer does not matter
@@ -1788,7 +1827,7 @@ class IncludeGraph:
         self.files = defaultdict(list)
         self.consumed = set()
         self._file_set = defaultdict(set)
-        self.include_dirs = {}   # file -> extra include dirs: a test's UNITTEST_FOR dir, ADDINCL of its module
+        self.include_dirs = {}   # file -> extra include dirs: a test's UNITTEST_FOR dir, ADDINCL of its module; of a .proto: proto_import_dirs
         self._includes = {}
         self._imports = {}
 
@@ -1832,7 +1871,8 @@ class IncludeGraph:
                     lines = fh.readlines()
             except OSError:
                 lines = []
-            self._imports[f] = [(m.group(1), self.resolver.resolve(m.group(1), False, os.path.dirname(f)))
+            dirs = self.include_dirs.get(f, ())
+            self._imports[f] = [(m.group(1), self.resolver.resolve(m.group(1), False, os.path.dirname(f), dirs))
                                 for m in map(IMPORT_RE.match, lines) if m]
         return self._imports[f]
 
@@ -1872,9 +1912,15 @@ class IncludeGraph:
             # what the compiler searches besides the root, for the module that
             # owns f: ADDINCL -- a header is resolved as its owner compiles it
             mod = self.resolver.mods.get(d)
-            extra = [] if mod is None else (
-                ([mod.test_for] if mod.test_for and is_gen_test(mod) else []) + mod.addincl)
-            if extra and f not in self._includes:
+            if f.endswith(PROTO_EXTS):
+                # of an import: the PROTO_NAMESPACE ya sends to the module
+                extra = self.resolver.proto_import_dirs(d)
+                fresh = f not in self._imports
+            else:
+                extra = [] if mod is None else (
+                    ([mod.test_for] if mod.test_for and is_gen_test(mod) else []) + mod.addincl)
+                fresh = f not in self._includes
+            if extra and fresh:
                 self.include_dirs[f] = tuple(extra)
             self._file_set[d].add(f)
             self.files[d].append(f)
@@ -2684,7 +2730,10 @@ def gen_spec(mod, resolver, graph, report, external):
                               resolver.alias_parts.get(_norm_dir(p)))
             for p in mod.peerdirs}
     peer -= {module_label(u) for u in resolver.util_parts}
-    report.peer_diff[target_dir] = (sorted(peer - spec.deps), sorted(spec.deps - peer))
+    if mod.use_common_google_apis:    # a PEERDIR in ya, see proto_import_dirs
+        peer.add(GOOGLEAPIS_COMMON_PROTOS_LABEL)
+    derived = spec.deps | spec.proto_public
+    report.peer_diff[target_dir] = (sorted(peer - derived), sorted(derived - peer))
 
     # PEERDIRs no #include leads to are still real deps (link-only: static
     # registration, an implementation of someone else's header, ...): add them,

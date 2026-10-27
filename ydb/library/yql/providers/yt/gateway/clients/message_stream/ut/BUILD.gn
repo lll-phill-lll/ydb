@@ -3,7 +3,6 @@ unittest_executable("ut") {
     "//library/cpp/testing/unittest",
     "//ydb/library/yql/providers/abstract/message_stream",
     "//ydb/library/yql/providers/yt/gateway/clients/message_stream",
-    "//yt/yt/client",
   ]
 
   sources = [

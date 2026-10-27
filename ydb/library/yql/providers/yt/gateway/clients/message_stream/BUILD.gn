@@ -6,6 +6,7 @@ library("message_stream") {
   ]
 
   deps = [
+    "//library/cpp/json",
     # "//library/cpp/yt/logging",
     "//yt/yt/core",
   ]
