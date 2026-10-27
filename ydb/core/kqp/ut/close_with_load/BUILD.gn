@@ -3,6 +3,7 @@ unittest_executable("close_with_load") {
     "//contrib/libs/fmt",
     "//library/cpp/threading/local_executor",
     "//ydb/core/base",
+    "//ydb/core/cms/console",
     "//ydb/core/kqp",  # peerdir only
     "//ydb/core/kqp/common/buffer",
     "//ydb/core/kqp/common/events",
