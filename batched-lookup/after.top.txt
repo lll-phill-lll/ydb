@@ -1,0 +1,25 @@
+    15.95%  [.] __memmove_avx512_unaligned_erms                                                                                                                                                         
+    15.51%  [.] NKikimr::NMiniKQL::EFetchResult NKikimr::NMiniKQL::NJoinPackedTuples::THybridHashJoin<NKikimr::NMiniKQL::(anonymous namespace)::TBlockPackedTupleSource, NKikimr::NMiniKQL::TSpillerSett
+    13.97%  [.] NKikimr::NMiniKQL::NJoinPackedTuples::THybridHashJoin<NKikimr::NMiniKQL::(anonymous namespace)::TBlockPackedTupleSource, NKikimr::NMiniKQL::TSpillerSettings{64, 65536, 8}, NKikimr::NMi
+     5.62%  [.] NKikimr::NMiniKQL::NPackedTuple::TTupleLayoutSIMD<NSimd::TSimdTraits<32, long long __vector(4), NSimd::NAVX2::TSimd8> >::Pack(unsigned char const**, unsigned char const**, unsigned cha
+     3.98%  [.] bool NKikimr::NMiniKQL::TBucket::DetatchBuildingPageIfLimitReached<65536>()                                                                                                             
+     3.13%  [.] NKikimr::NMiniKQL::NPackedTuple::TNeumannHashTable<false, false>::Build(unsigned char const*, unsigned char const*, int, std::__y1::optional<unsigned int>)                             
+     2.98%  [.] NKikimr::NMiniKQL::NPackedTuple::TTupleLayoutSIMD<NSimd::TSimdTraits<32, long long __vector(4), NSimd::NAVX2::TSimd8> >::Unpack(unsigned char**, unsigned char**, unsigned char const*, 
+     2.88%  [k] do_user_addr_fault                                                                                                                                                                      
+     2.78%  [.] NKikimr::NMiniKQL::NPackedTuple::PackTupleFallbackColImpl(unsigned char const* const*, unsigned char*, unsigned long, unsigned long, unsigned long const*, unsigned long const*, unsigne
+     2.63%  [.] __memset_avx512_unaligned_erms                                                                                                                                                          
+     2.04%  [.] NKikimr::NMiniKQL::TPackResult::AppendTuple(NKikimr::NMiniKQL::TSingleTuple, NKikimr::NMiniKQL::NPackedTuple::TTupleLayout const*)                                                      
+     1.94%  [.] NKikimr::NMiniKQL::RunJoinsBench(NKikimr::NMiniKQL::TBenchmarkSettings const&, std::__y1::function<void (NKikimr::NMiniKQL::TBenchmarkCaseResult const&)> const&)                       
+     1.74%  [.] NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::TupleDeepCopy(unsigned char const*, unsigned char const*, std::__y1::vector<unsigned char, NKikimr::NMiniKQL::TMKQLAllocator<unsigned cha
+     1.59%  [k] clear_page_erms                                                                                                                                                                         
+     1.39%  [.] NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::TupleDeepCopy(unsigned char const*, unsigned char const*, std::__y1::vector<unsigned char, NKikimr::NMiniKQL::TMKQLAllocator<unsigned cha
+     1.34%  [k] _raw_spin_lock                                                                                                                                                                          
+     1.19%  [.] (anonymous namespace)::BuildSide(NKikimr::NMiniKQL::TDqSetup<false, true>&, NKikimr::NMiniKQL::THolderFactory const&, TVector<unsigned long, std::__y1::allocator<unsigned long> > const
+     1.04%  [.] _ZNSt4__y16vectorIhN7NKikimr8NMiniKQL14TMKQLAllocatorIhLNS2_14EMemorySubPoolE0EEEE20resize_uninitializedEmQ27is_trivially_destructible_vIT_E                                            
+     0.99%  [.] long std::__y1::uniform_int_distribution<long>::operator()<std::__y1::linear_congruential_engine<unsigned long, 48271ul, 0ul, 2147483647ul> >(std::__y1::linear_congruential_engine<unsi
+     0.94%  [.] std::__y1::pair<NYql::NUdf::TUnboxedValue const*, NYql::NUdf::TUnboxedValue*> std::__y1::__copy_impl::operator()[abi:ne210000]<NYql::NUdf::TUnboxedValue const*, NYql::NUdf::TUnboxedVal
+     0.89%  [.] NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::Concat(std::__y1::vector<unsigned char, NKikimr::NMiniKQL::TMKQLAllocator<unsigned char, (NKikimr::NMiniKQL::EMemorySubPool)0> >&, std::_
+     0.84%  [.] NKikimr::NMiniKQL::TDirectArrayHolderInplace::operator delete(NKikimr::NMiniKQL::TDirectArrayHolderInplace*, std::destroying_delete_t)                                                  
+     0.80%  [.] memcpy@plt                                                                                                                                                                              
+     0.75%  [.] NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::CalculateColumnSizes(unsigned char const*, unsigned int, std::__y1::vector<unsigned long, NKikimr::NMiniKQL::TMKQLAllocator<unsigned long
+     0.75%  [.] NKikimr::NMiniKQL::TListChunk<NYql::NUdf::TUnboxedValue>::~TListChunk()                                                                                                                 
