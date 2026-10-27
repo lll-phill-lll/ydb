@@ -871,6 +871,7 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                 default:
                     MKQL_ENSURE(false, "unhandled ESpillResult case");
                 }
+                [[maybe_unused]] auto& buckets = state.Spiller.GetState().Buckets;
                 ui32 idx = 0;
                 for (TSingleTuple tuple : *state.FetchedPack) {
                     if (idx++ < state.ResumeIndex) {
@@ -883,8 +884,13 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                         }
                     } else {
                         int bucketIndex = Settings.BucketIndex(tuple);
-                        bool thisBucketSpilled = state.Spiller.IsBucketSpilled(bucketIndex);
-                        if (thisBucketSpilled) {
+                        if (TTable* thisTable = std::get_if<TTable>(&buckets[bucketIndex])) {
+                            if (!lookupToTable(*thisTable, tuple, state.BuildCursor, state.ProbeRowMatched)) {
+                                state.ResumeIndex = idx - 1;
+                                return EFetchResult::One;
+                            }
+                            finishProbeRow(tuple, state.ProbeRowMatched);
+                        } else {
                             if constexpr (TracksProbeMatches()) {
                                 state.Spiller.AddRow(
                                     {.Val = tuple, .Side = ESide::Probe, .BucketIndex = bucketIndex},
@@ -893,14 +899,6 @@ template <typename Source, TSpillerSettings Settings, TPhysicalJoin Join> class 
                                 state.Spiller.AddRow(
                                     {.Val = tuple, .Side = ESide::Probe, .BucketIndex = bucketIndex});
                             }
-                        } else {
-                            TTable* thisTable = std::get_if<TTable>(&state.Spiller.GetState().Buckets[bucketIndex]);
-                            MKQL_ENSURE(thisTable, "sanity check");
-                            if (!lookupToTable(*thisTable, tuple, state.BuildCursor, state.ProbeRowMatched)) {
-                                state.ResumeIndex = idx - 1;
-                                return EFetchResult::One;
-                            }
-                            finishProbeRow(tuple, state.ProbeRowMatched);
                         }
                     }
                     state.ProbeRowMatched = false;

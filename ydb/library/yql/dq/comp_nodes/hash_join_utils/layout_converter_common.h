@@ -54,13 +54,15 @@ struct TPackResult {
     private:
         const TPackResult* base;
         i32 index;
-        i32 Width() const {
-            return base->PackedTuples.size() / base->NTuples;
-        }
+        i32 width;
     public:
         Iterator() { MKQL_ENSURE(false,"Not implemented"); }
-        Iterator(const TPackResult& pack, i32 idx) : base(&pack), index(idx) {}
-        element_type operator*() const { return {.PackedData = base->PackedTuples.data() + Width()*index, .OverflowBegin = base->Overflow.data()}; }
+        Iterator(const TPackResult& pack, i32 idx)
+            : base(&pack)
+            , index(idx)
+            , width(pack.NTuples ? pack.PackedTuples.size() / pack.NTuples : 0)
+        {}
+        element_type operator*() const { return {.PackedData = base->PackedTuples.data() + width*index, .OverflowBegin = base->Overflow.data()}; }
         auto &operator++() { index++; return *this; }
         auto operator++(int) { auto tmp = *this; ++(*this); return tmp; }
         auto begin() {return Iterator(*base, 0);}
