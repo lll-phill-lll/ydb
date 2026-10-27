@@ -11,4 +11,4 @@ void TServiceOperator::Register(const TConfig& config) {
     service->Path = config.GetPath();
 }
 
-} // namespace NKikimr::NMetadata::NProvider
+}   // namespace NKikimr::NMetadata::NProvider

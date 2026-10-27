@@ -1,11 +1,10 @@
-#include "memory_pool.h"
-
 #include "compartment.h"
+#include "memory_pool.h"
 #include "pointer.h"
 
-#include <utility>
-
 #include <util/system/align.h>
+
+#include <utility>
 
 namespace NYdb::NWasm {
 
@@ -13,20 +12,22 @@ namespace NYdb::NWasm {
 
 TWebAssemblyMemoryPool::TWebAssemblyMemoryPool()
     : Compartment_(GetCurrentCompartment())
-{ }
+{
+}
 
 TWebAssemblyMemoryPool::TWebAssemblyMemoryPool(IWebAssemblyCompartment* compartment)
     : Compartment_(compartment)
-{ }
+{
+}
 
 TWebAssemblyMemoryPool::TWebAssemblyMemoryPool(TWebAssemblyMemoryPool&& other) noexcept
     : Compartment_(std::exchange(other.Compartment_, nullptr))
     , Size_(std::exchange(other.Size_, 0))
     , Allocations_(std::move(other.Allocations_))
-{ }
-
-TWebAssemblyMemoryPool& TWebAssemblyMemoryPool::operator=(TWebAssemblyMemoryPool&& other) noexcept
 {
+}
+
+TWebAssemblyMemoryPool& TWebAssemblyMemoryPool::operator=(TWebAssemblyMemoryPool&& other) noexcept {
     if (this != &other) {
         try {
             Clear();
@@ -51,18 +52,15 @@ void TWebAssemblyMemoryPool::Clear()
     Size_ = 0;
 }
 
-size_t TWebAssemblyMemoryPool::GetSize() const
-{
+size_t TWebAssemblyMemoryPool::GetSize() const {
     return Size_;
 }
 
-size_t TWebAssemblyMemoryPool::GetCapacity() const
-{
+size_t TWebAssemblyMemoryPool::GetCapacity() const {
     return Size_;
 }
 
-bool TWebAssemblyMemoryPool::HasCompartment() const
-{
+bool TWebAssemblyMemoryPool::HasCompartment() const {
     return Compartment_;
 }
 
@@ -85,4 +83,4 @@ char* TWebAssemblyMemoryPool::AllocateAligned(size_t size, int align)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-} // namespace NYdb::NWasm
+}   // namespace NYdb::NWasm

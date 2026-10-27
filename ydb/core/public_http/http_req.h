@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ydb/public/api/protos/ydb_status_codes.pb.h>
-#include <ydb/library/actors/http/http.h>
 #include <ydb/library/actors/core/actorsystem_fwd.h>
+#include <ydb/library/actors/http/http.h>
+#include <ydb/public/api/protos/ydb_status_codes.pb.h>
 
 namespace NKikimr::NPublicHttp {
 
@@ -10,7 +10,8 @@ using namespace NActors;
 
 class THttpRequestContext {
 public:
-    THttpRequestContext(TActorSystem* actorSystem, NHttp::THttpIncomingRequestPtr request, NActors::TActorId sender, TInstant startedAt, TIntrusivePtr<::NMonitoring::TDynamicCounters> counters);
+    THttpRequestContext(TActorSystem* actorSystem, NHttp::THttpIncomingRequestPtr request, NActors::TActorId sender, TInstant startedAt,
+        TIntrusivePtr<::NMonitoring::TDynamicCounters> counters);
     THttpRequestContext(const THttpRequestContext&) = default;
 
     void ResponseBadRequest(Ydb::StatusIds::StatusCode status, const TString& errorText) const;
@@ -59,4 +60,4 @@ private:
     TString Db;
 };
 
-} // namespace NKikimr::NPublicHttp
+}   // namespace NKikimr::NPublicHttp
