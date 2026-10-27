@@ -1,0 +1,14 @@
+config("avx2_private_config") {
+  cflags = [ "-mavx2" ]
+}
+
+library("avx2") {
+  deps = [
+    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils",
+    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils/simd",  # peerdir only
+  ]
+
+  sources = [ "packing_avx2.cpp" ]
+
+  configs = [ ":avx2_private_config" ]
+}

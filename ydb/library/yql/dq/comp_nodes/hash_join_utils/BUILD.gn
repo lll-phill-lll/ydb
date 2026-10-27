@@ -1,10 +1,3 @@
-config("hash_join_utils_private_config") {
-  cflags = [
-    "-mprfchw",
-    "-mavx2",
-  ]
-}
-
 library("hash_join_utils") {
   public_deps = [
     # "//contrib/libs/apache/arrow",
@@ -20,6 +13,8 @@ library("hash_join_utils") {
 
   deps = [
     # "//library/cpp/digest/crc32c",  # peerdir only
+    "//ydb/library/yql/dq/comp_nodes/hash_join_utils/simd/packing/avx2",  # peerdir only
+    "//ydb/library/yql/dq/comp_nodes/hash_join_utils/simd/packing/sse42",  # peerdir only
     # "//yql/essentials/minikql/arrow",
     # "//yql/essentials/public/decimal",
     "//yql/essentials/public/udf/arrow",
@@ -39,6 +34,4 @@ library("hash_join_utils") {
     "spilled_storage.cpp",
     "tuple.cpp",
   ]
-
-  configs = [ ":hash_join_utils_private_config" ]
 }

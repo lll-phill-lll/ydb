@@ -1,0 +1,14 @@
+config("sse42_private_config") {
+  cflags = [ "-msse4.2" ]
+}
+
+library("sse42") {
+  deps = [
+    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils",
+    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils/simd",  # peerdir only
+  ]
+
+  sources = [ "packing_sse42.cpp" ]
+
+  configs = [ ":sse42_private_config" ]
+}
