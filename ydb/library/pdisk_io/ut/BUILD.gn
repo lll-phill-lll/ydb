@@ -6,7 +6,10 @@ unittest_executable("ut") {
     "//ydb/library/pdisk_io",
   ]
 
-  sources = [ "uring_router_ut.cpp" ]
+  sources = [
+    "aio_completion_ut.cpp",
+    "uring_router_ut.cpp",
+  ]
 
   include_dirs = [ "//ydb/library/pdisk_io" ]
 
