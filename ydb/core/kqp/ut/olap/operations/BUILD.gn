@@ -15,6 +15,7 @@ unittest_executable("operations") {
     "//ydb/core/tx/columnshard/hooks/testing",
     "//ydb/core/tx/columnshard/test_helper",
     "//ydb/core/wrappers",
+    "//ydb/public/sdk/cpp/src/client/operation",
     "//yql/essentials/sql/pg_dummy",  # peerdir only
   ]
 
