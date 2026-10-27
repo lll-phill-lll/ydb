@@ -4,9 +4,7 @@ library("cgroup") {
     # "//library/cpp/yt/misc",
   ]
 
-  deps = [
-    "//library/cpp/yt/logging",
-  ]
+  deps = [ "//library/cpp/yt/logging" ]
 
   sources = [
     "process.cpp",
