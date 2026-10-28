@@ -14,9 +14,9 @@ bool IsSupportedIndex(TPathId pathId, const TOperationContext& context) {
 
 } // namespace NKikimr::NSchemeShard
 
-namespace NKikimr::NSchemeShard::NBackup {
+namespace NKikimr::NSchemeShard::NBackupCollection {
 
-std::optional<NBackup::TBackupCollectionPaths> ResolveBackupCollectionPaths(
+std::optional<NBackupCollection::TBackupCollectionPaths> ResolveBackupCollectionPaths(
     const TString& rootPathStr,
     const TString& name,
     bool validateFeatureFlag,
@@ -94,7 +94,7 @@ std::optional<NBackup::TBackupCollectionPaths> ResolveBackupCollectionPaths(
         return std::nullopt;
     }
 
-    return NBackup::TBackupCollectionPaths{rootPath, dstPath};
+    return NBackupCollection::TBackupCollectionPaths{rootPath, dstPath};
 }
 
 std::optional<THashMap<TString, THashSet<TString>>> GetBackupRequiredPaths(
@@ -262,4 +262,4 @@ TString ToX509String(const TInstant& datetime) {
     return datetime.FormatLocalTime("%Y%m%d%H%M%SZ");
 }
 
-}  // namespace NKikimr::NSchemeShard::NBackup
+}  // namespace NKikimr::NSchemeShard::NBackupCollection

@@ -1,0 +1,22 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "contrib/libs/protobuf/src/google/protobuf/duration.pb.h"
+#include "contrib/libs/protobuf/src/google/protobuf/timestamp.pb.h"
+#include "contrib/libs/protobuf/src/google/protobuf/util/message_differencer.h"
+#include "library/cpp/yt/error/mergeable_dictionary.h"
+#include "library/cpp/yt/logging/tag.h"
+#include "library/cpp/yt/yson_string/convert.h"
+#include "util/folder/path.h"
+#include "util/string/builder.h"
+#include "yt/cpp/mapreduce/http/context.h"
+#include "yt/cpp/mapreduce/http/http.h"
+#include "yt/cpp/mapreduce/interface/client.h"
+#include "yt/cpp/mapreduce/io/counting_raw_reader.h"
+#include "yt/yt/core/actions/callback.h"
+#include "yt/yt/core/bus/public.h"
+#include "yt/yt/core/compression/public.h"
+#include "yt/yt/core/concurrency/public.h"
+#include "yt/yt/core/logging/public.h"
+#include "yt/yt/core/yson/public.h"
+#include "yt/yt_proto/yt/core/ytree/proto/ypath.pb.h"

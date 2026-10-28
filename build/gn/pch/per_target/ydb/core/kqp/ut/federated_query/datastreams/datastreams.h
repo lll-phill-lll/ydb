@@ -1,0 +1,22 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "contrib/libs/fmt/include/fmt/format.h"
+#include "library/cpp/monlib/dynamic_counters/percentile/percentile.h"
+#include "ydb/core/base/counters.h"
+#include "ydb/core/base/metadata.h"
+#include "ydb/core/kqp/ut/federated_query/datastreams/common.h"
+#include "ydb/core/sys_view/common/resolver.h"
+#include "ydb/core/tx/scheme_board/helpers.h"
+#include "ydb/core/tx/tx_processing.h"
+#include "ydb/library/actors/interconnect/events_local.h"
+#include "ydb/library/grpc/server/event_callback.h"
+#include "ydb/services/metadata/manager/common.h"
+#include "ydb/services/metadata/manager/table_record.h"
+#include "ydb/services/metadata/request/common.h"
+#include "yql/essentials/core/yql_expr_optimize.h"
+#include "yql/essentials/sql/v1/translation/result.h"
+#include "ydb/core/protos/console.pb.h"
+#include "ydb/public/api/protos/draft/ydb_dynamic_config.pb.h"
+#include "ydb/public/api/protos/ydb_discovery.pb.h"
+#include "ydb/public/api/protos/ydb_import.pb.h"

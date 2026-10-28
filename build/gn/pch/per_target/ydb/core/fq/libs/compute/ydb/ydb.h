@@ -1,0 +1,25 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <future>
+#include "ydb/core/fq/libs/common/util.h"
+#include "ydb/core/fq/libs/compute/ydb/actors_factory.h"
+#include "ydb/core/fq/libs/compute/ydb/base_compute_actor.h"
+#include "ydb/core/fq/libs/compute/ydb/events/events.h"
+#include "ydb/core/fq/libs/control_plane_storage/events/events.h"
+#include "ydb/core/fq/libs/private_client/private_client.h"
+#include "ydb/core/fq/libs/ydb/ydb.h"
+#include "ydb/core/scheme/scheme_pathid.h"
+#include "ydb/library/actors/core/executor_pool_jail.h"
+#include "ydb/library/actors/core/log_metrics.h"
+#include "ydb/library/actors/core/log_settings.h"
+#include "ydb/library/actors/core/mon.h"
+#include "ydb/library/actors/core/subsystem.h"
+#include "ydb/library/actors/interconnect/poller/poller_actor.h"
+#include "ydb/library/actors/memory_log/memlog.h"
+#include "ydb/library/actors/struct_log/json_writer.h"
+#include "ydb/library/actors/struct_log/log_stack.h"
+#include "ydb/library/yql/dq/actors/dq.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/query/client.h"
+#include "ydb/core/protos/labeled_counters.pb.h"
+#include "ydb/library/actors/protos/services_common.pb.h"

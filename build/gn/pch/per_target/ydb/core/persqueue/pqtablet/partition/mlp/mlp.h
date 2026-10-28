@@ -1,0 +1,28 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <future>
+#include "contrib/libs/openssl/include/openssl/ssl.h"
+#include "contrib/restricted/abseil-cpp-tstring/y_absl/status/statusor.h"
+#include "library/cpp/codecs/codecs.h"
+#include "library/cpp/getopt/small/last_getopt_opt.h"
+#include "library/cpp/json/json_reader.h"
+#include "library/cpp/messagebus/config/netaddr.h"
+#include "library/cpp/monlib/dynamic_counters/percentile/percentile_base.h"
+#include "util/generic/queue.h"
+#include "tools/enum_parser/enum_serialization_runtime/enum_runtime.h"
+#include "ydb/core/keyvalue/keyvalue_intermediate.h"
+#include "ydb/core/persqueue/common/logging.h"
+#include "ydb/core/persqueue/pqtablet/partition/mlp/mlp_storage.h"
+#include "ydb/library/actors/http/http_config.h"
+#include "ydb/library/protobuf_printer/security_printer.h"
+#include "yql/essentials/public/issue/yql_issue_manager.h"
+#include "library/cpp/messagebus/monitoring/mon_proto.pb.h"
+#include "ydb/core/protos/scheme_board.pb.h"
+#include "ydb/core/protos/test_shard_control.pb.h"
+#include "ydb/core/protos/tx_proxy.pb.h"
+#include "ydb/core/ymq/proto/records.pb.h"
+#include "ydb/library/ydb_issue/proto/issue_id.pb.h"
+#include "ydb/public/api/protos/ydb_cms.pb.h"
+#include "ydb/public/api/protos/ydb_discovery.pb.h"
+#include "ydb/public/api/protos/ydb_export.pb.h"

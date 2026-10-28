@@ -370,7 +370,7 @@ public:
                                                    static_cast<ui64>(OperationId.GetTxId()),
                                                    static_cast<ui64>(context.SS->SelfTabletId()));
 
-        auto bcPaths = NBackup::ResolveBackupCollectionPaths(rootPathStr, name, false, context, result);
+        auto bcPaths = NBackupCollection::ResolveBackupCollectionPaths(rootPathStr, name, false, context, result);
         if (!bcPaths) {
             return result;
         }
@@ -566,7 +566,7 @@ TVector<ISubOperation::TPtr> CreateDropBackupCollectionCascade(TOperationId next
 
     // Use the same validation logic as ResolveBackupCollectionPaths to be consistent
     auto proposeResult = MakeHolder<TProposeResponse>(NKikimrScheme::StatusAccepted, static_cast<ui64>(nextId.GetTxId()), static_cast<ui64>(context.SS->SelfTabletId()));
-    auto bcPaths = NBackup::ResolveBackupCollectionPaths(parentPathStr, dropOperation.GetName(), false, context, proposeResult);
+    auto bcPaths = NBackupCollection::ResolveBackupCollectionPaths(parentPathStr, dropOperation.GetName(), false, context, proposeResult);
     if (!bcPaths) {
         return {CreateReject(nextId, proposeResult->Record.GetStatus(), proposeResult->Record.GetReason())};
     }

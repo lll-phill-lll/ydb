@@ -1,0 +1,34 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <expected>
+#include <queue>
+#include <stack>
+#include "contrib/libs/apache/arrow/cpp/src/arrow/compute/api.h"
+#include "contrib/libs/apache/arrow/cpp/src/arrow/ipc/writer.h"
+#include "contrib/libs/protobuf/src/google/protobuf/struct.pb.h"
+#include "library/cpp/json/json_reader.h"
+#include "library/cpp/monlib/metrics/metric.h"
+#include "library/cpp/monlib/service/pages/templates.h"
+#include "library/cpp/object_factory/object_factory.h"
+#include "util/string/join.h"
+#include "ydb/core/formats/arrow/accessor/abstract/common.h"
+#include "ydb/core/formats/arrow/accessor/abstract/minmax_utils.h"
+#include "ydb/core/formats/arrow/accessor/common/chunk_data.h"
+#include "ydb/core/formats/arrow/filter/filter.h"
+#include "ydb/core/formats/factory.h"
+#include "ydb/library/actors/core/actorsystem.h"
+#include "ydb/library/actors/core/hfunc.h"
+#include "ydb/library/actors/core/mon.h"
+#include "ydb/library/actors/interconnect/event_filter.h"
+#include "ydb/library/actors/interconnect/poller/poller_tcp.h"
+#include "ydb/library/actors/memory_log/memlog.h"
+#include "ydb/library/actors/struct_log/json_writer.h"
+#include "ydb/library/actors/struct_log/log_stack.h"
+#include "ydb/library/conclusion/result.h"
+#include "ydb/library/formats/arrow/switch/switch_type.h"
+#include "ydb/library/yql/dq/actors/dq_events_ids.h"
+#include "yql/essentials/minikql/mkql_mem_info.h"
+#include "yql/essentials/parser/pg_wrapper/interface/context.h"
+#include "yql/essentials/public/decimal/yql_decimal.h"
+#include "ydb/library/actors/protos/services_common.pb.h"

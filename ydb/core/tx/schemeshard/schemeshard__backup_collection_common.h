@@ -12,7 +12,7 @@ namespace NKikimr::NSchemeShard {
     bool IsSupportedIndex(TPathId pathId, const TSchemeShard* ss);
 }
 
-namespace NKikimr::NSchemeShard::NBackup {
+namespace NKikimr::NSchemeShard::NBackupCollection {
 
 inline constexpr TStringBuf FullBackupSuffix = "_full";
 inline constexpr TStringBuf IncrementalBackupSuffix = "_incremental";
@@ -50,4 +50,4 @@ std::optional<THashMap<TString, THashSet<TString>>> GetRestoreRequiredPaths(
 
 TString ToX509String(const TInstant& datetime);
 
-}  // namespace NKikimr::NSchemeShard::NBackup
+}  // namespace NKikimr::NSchemeShard::NBackupCollection

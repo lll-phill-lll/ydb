@@ -12,8 +12,9 @@ import("//build/gn/protobuf.gni")
 import("//build/gn/python.gni")
 import("//build/gn/resources.gni")
 import("//build/gn/rodata.gni")
-import("//build/gn/pch/groups.gni")
-import("//build/gn/pch/targets.gni")
+import("//build/gn/pch/global/enum_serialization.gni")
+import("//build/gn/pch/global/groups.gni")
+import("//build/gn/pch/per_target/targets.gni")
 
 import("//build/gn/config/${host_os}/deps.gni")
 
@@ -45,10 +46,10 @@ declare_args() {
   time_trace_granularity = 500
 
   # precompiled headers:
-  #   "per_target" -- each target of pch_targets (//build/gn/pch/targets.gni)
-  #     has its own, //build/gn/pch/<dir>/<name>.h;
-  #   "global" -- //build/gn/pch:pch_<name> for the C++ targets of each
-  #     group of pch_groups (//build/gn/pch/groups.gni, written by
+  #   "per_target" -- each target of pch_targets (//build/gn/pch/per_target/targets.gni)
+  #     has its own, //build/gn/pch/per_target/<dir>/<name>.h;
+  #   "global" -- //build/gn/pch/global:pch_<name> for the C++ targets of each
+  #     group of pch_groups (//build/gn/pch/global/groups.gni, written by
   #     build/gn/scripts/pch_update.py), none for the rest; the build tools
   #     have none, see tool_toolchain;
   #   "none"

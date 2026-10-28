@@ -1,7 +1,7 @@
 """The precompiled header of a gn target (pch_targets of
-//build/gn/pch/targets.gni) from the clang traces of a build with
+//build/gn/pch/per_target/targets.gni) from the clang traces of a build with
 time_trace = true: the headers most of its C++ files parse themselves -- not
-loaded from a PCH -- written as //build/gn/pch/<dir>/<name>.h.
+loaded from a PCH -- written as //build/gn/pch/per_target/<dir>/<name>.h.
 
 A header is taken when at least --share of the target's files parse it and it
 is a root among those: in most of the files it is not included by another
@@ -93,7 +93,7 @@ def main():
         roots.sort(key=lambda h: best[h][1] if h in best else float("inf"))
 
         d, _, name = label[2:].partition(":")
-        out = os.path.join(_ROOT, "build", "gn", "pch", d, name + ".h")
+        out = os.path.join(_ROOT, "build", "gn", "pch", "per_target", d, name + ".h")
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "w", encoding="utf-8") as f:
             f.write("#pragma once\n\n")

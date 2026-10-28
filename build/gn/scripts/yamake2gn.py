@@ -3303,8 +3303,10 @@ def mark_test_only(root, rendered, node_module, test_mods):
 
 
 PCH_DIR = "build/gn/pch"
-PCH_TARGETS = PCH_DIR + "/targets.gni"   # pch_mode "per_target": the PCH of //<dir>:<name> is <dir>/<name>.h
-PCH_GROUPS = PCH_DIR + "/groups.gni"     # pch_mode "global": the PCH of group <name> is <name>/pch.h, pch.cc
+PCH_PER_TARGET_DIR = PCH_DIR + "/per_target"
+PCH_GLOBAL_DIR = PCH_DIR + "/global"
+PCH_TARGETS = PCH_PER_TARGET_DIR + "/targets.gni"   # pch_mode "per_target": the PCH of //<dir>:<name> is <dir>/<name>.h
+PCH_GROUPS = PCH_GLOBAL_DIR + "/groups.gni"         # pch_mode "global": the PCH of group <name> is <name>/pch.h, pch.cc
 _PCH_LIST_RE = re.compile(r'\bpch_targets\s*=\s*\[([^\]]*)\]')
 _PCH_GROUP_RE = re.compile(r'\bname\s*=\s*"([^"]+)"\s*targets\s*=\s*\[([^\]]*)\]')
 _QUOTED_LABEL_RE = re.compile(r'"(//[^"]+)"')
@@ -3334,10 +3336,10 @@ def stale_pch(root, rendered):
         d, name = _label_node(label, "")
         if missing_target(label):
             out.append(("per_target", label, "no such target"))
-        need("per_target", label, os.path.join(PCH_DIR, d, name + ".h"))
+        need("per_target", label, os.path.join(PCH_PER_TARGET_DIR, d, name + ".h"))
     for group, targets in _PCH_GROUP_RE.findall(read_text(os.path.join(root, PCH_GROUPS)) or ""):
         for f in ("pch.h", "pch.cc"):
-            need("global", "group " + group, os.path.join(PCH_DIR, group, f))
+            need("global", "group " + group, os.path.join(PCH_GLOBAL_DIR, group, f))
         for label in _QUOTED_LABEL_RE.findall(targets):
             if "*" not in label and missing_target(label):
                 out.append(("global", label, "no such target (group %s)" % group))

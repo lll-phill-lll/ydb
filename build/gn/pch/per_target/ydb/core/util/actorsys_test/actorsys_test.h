@@ -1,0 +1,31 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <expected>
+#include <thread>
+#include "contrib/libs/grpc/include/grpc++/server_context.h"
+#include "contrib/libs/grpc/include/grpcpp/create_channel.h"
+#include "contrib/libs/grpc/include/grpcpp/impl/proto_utils.h"
+#include "contrib/libs/grpc/include/grpcpp/server_builder.h"
+#include "contrib/libs/grpc/include/grpcpp/support/async_stream.h"
+#include "contrib/libs/grpc/include/grpcpp/support/async_unary_call.h"
+#include "library/cpp/monlib/dynamic_counters/percentile/percentile.h"
+#include "util/generic/queue.h"
+#include "ydb/core/base/channel_profiles.h"
+#include "ydb/core/base/domain.h"
+#include "ydb/core/base/feature_flags.h"
+#include "ydb/core/base/statestorage_impl.h"
+#include "ydb/core/base/tablet.h"
+#include "ydb/core/base/tablet_pipe.h"
+#include "ydb/core/control/lib/dynamic_control_board_impl.h"
+#include "ydb/core/control/lib/immediate_control_board_impl.h"
+#include "ydb/core/util/actorsys_test/defs.h"
+#include "ydb/library/actors/core/thread_context.h"
+#include "ydb/library/actors/interconnect/interconnect.h"
+#include "ydb/library/grpc/server/logger.h"
+#include "ydb/library/pdisk_io/buffer_pool.h"
+#include "ydb/library/pdisk_io/sector_map.h"
+#include "ydb/core/protos/config.pb.h"
+#include "ydb/core/protos/datashard_config.pb.h"
+#include "ydb/core/protos/labeled_counters.pb.h"
+#include "ydb/core/protos/netclassifier.pb.h"

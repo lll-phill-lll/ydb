@@ -1,0 +1,23 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "library/cpp/testing/unittest/registar.h"
+#include "ydb/core/base/feature_flags.h"
+#include "ydb/core/blobstorage/base/bufferwithgaps.h"
+#include "ydb/core/blobstorage/base/utility.h"
+#include "ydb/core/blobstorage/ddisk/defs.h"
+#include "ydb/core/blobstorage/groupinfo/blobstorage_groupinfo.h"
+#include "ydb/core/blobstorage/pdisk/blobstorage_pdisk_allocation.h"
+#include "ydb/core/blobstorage/pdisk/blobstorage_pdisk_crypto.h"
+#include "ydb/core/blobstorage/pdisk/blobstorage_pdisk_defs.h"
+#include "ydb/core/blobstorage/vdisk/common/memusage.h"
+#include "ydb/core/testlib/actors/test_runtime.h"
+#include "ydb/core/util/metrics.h"
+#include "ydb/library/actors/core/subsystems/allocation_cache.h"
+#include "ydb/library/actors/wilson/wilson_span.h"
+#include "ydb/library/pdisk_io/buffer_pool.h"
+#include "ydb/library/pdisk_io/sector_map.h"
+#include "ydb/core/protos/blobstorage_config.pb.h"
+#include "ydb/core/protos/blobstorage_ddisk.pb.h"
+#include "ydb/core/protos/blobstorage_pdisk_config.pb.h"
+#include "ydb/core/protos/blobstorage_vdisk_config.pb.h"

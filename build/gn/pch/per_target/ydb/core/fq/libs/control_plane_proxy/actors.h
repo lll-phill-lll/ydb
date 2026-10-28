@@ -1,0 +1,33 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <expected>
+#include <stack>
+#include "contrib/libs/fmt/include/fmt/format.h"
+#include "library/cpp/monlib/metrics/summary_collector.h"
+#include "library/cpp/monlib/service/monservice.h"
+#include "library/cpp/monlib/service/pages/templates.h"
+#include "library/cpp/string_utils/levenshtein_diff/levenshtein_diff.h"
+#include "library/cpp/yson/node/node.h"
+#include "library/cpp/yt/exception/exception.h"
+#include "util/generic/queue.h"
+#include "util/string/join.h"
+#include "ydb/library/actors/core/actor.h"
+#include "ydb/library/actors/core/event_local.h"
+#include "ydb/library/actors/core/event_pb.h"
+#include "ydb/library/actors/core/executor_pool_jail.h"
+#include "ydb/library/actors/memory_log/memlog.h"
+#include "ydb/library/actors/struct_log/create_message.h"
+#include "ydb/library/actors/struct_log/json_writer.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/proto/accessor.h"
+#include "yql/essentials/ast/yql_ast.h"
+#include "yql/essentials/core/credentials/yql_credentials.h"
+#include "yql/essentials/minikql/mkql_mem_info.h"
+#include "yql/essentials/parser/pg_catalog/catalog.h"
+#include "yql/essentials/public/decimal/yql_decimal.h"
+#include "yql/essentials/public/issue/yql_warning.h"
+#include "yql/essentials/public/udf/udf_data_type.h"
+#include "ydb/core/fq/libs/config/protos/fq_config.pb.h"
+#include "ydb/core/fq/libs/config/protos/issue_id.pb.h"
+#include "ydb/core/fq/libs/control_plane_storage/proto/yq_internal.pb.h"
+#include "ydb/library/actors/protos/interconnect.pb.h"

@@ -1,0 +1,31 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <future>
+#include <thread>
+#include "library/cpp/testing/unittest/registar.h"
+#include "library/cpp/testing/unittest/tests_data.h"
+#include "ydb/core/base/channel_profiles.h"
+#include "ydb/core/base/domain.h"
+#include "ydb/core/base/feature_flags.h"
+#include "ydb/core/base/statestorage.h"
+#include "ydb/core/base/tablet_pipe.h"
+#include "ydb/core/blobstorage/ddisk/defs.h"
+#include "ydb/core/blobstorage/groupinfo/blobstorage_groupinfo.h"
+#include "ydb/core/blobstorage/vdisk/common/defs.h"
+#include "ydb/core/mind/bscontroller/types.h"
+#include "ydb/core/nbs/cloud/blockstore/libs/common/block_range/block_range.h"
+#include "ydb/core/nbs/cloud/storage/core/libs/common/public.h"
+#include "ydb/core/testlib/audit_helpers/audit_helper.h"
+#include "ydb/library/actors/core/thread_context.h"
+#include "ydb/library/actors/http/http_config.h"
+#include "ydb/library/actors/interconnect/mock/ic_mock.h"
+#include "ydb/library/pdisk_io/buffer_pool.h"
+#include "ydb/library/pdisk_io/sector_map.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/types/status/status.h"
+#include "yql/essentials/public/issue/yql_issue.h"
+#include "ydb/core/nbs/cloud/storage/core/protos/error.pb.h"
+#include "ydb/core/protos/blobstorage_ddisk.pb.h"
+#include "ydb/core/protos/datashard_config.pb.h"
+#include "ydb/core/protos/labeled_counters.pb.h"
+#include "ydb/core/protos/netclassifier.pb.h"

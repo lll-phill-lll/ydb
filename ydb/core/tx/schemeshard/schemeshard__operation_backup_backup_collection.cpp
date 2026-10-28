@@ -19,13 +19,13 @@ std::optional<THashMap<TString, THashSet<TString>>> GetRequiredPaths<TTag>(
     const TOperationContext& context)
 {
     const auto& backupOp = tx.GetBackupBackupCollection();
-    return NBackup::GetBackupRequiredPaths(tx, backupOp.GetTargetDir(), backupOp.GetName(), context);
+    return NBackupCollection::GetBackupRequiredPaths(tx, backupOp.GetTargetDir(), backupOp.GetName(), context);
 }
 
 template <>
 bool Rewrite(TTag, TTxTransaction& tx) {
-    auto now = NBackup::ToX509String(TlsActivationContext->AsActorContext().Now());
-    tx.MutableBackupBackupCollection()->SetTargetDir(NBackup::FullBackupDirName(now));
+    auto now = NBackupCollection::ToX509String(TlsActivationContext->AsActorContext().Now());
+    tx.MutableBackupBackupCollection()->SetTargetDir(NBackupCollection::FullBackupDirName(now));
     return true;
 }
 
@@ -76,7 +76,7 @@ TVector<ISubOperation::TPtr> CreateBackupBackupCollection(TOperationId opId, con
     bool omitIndexes = bc->Description.GetOmitIndexes() ||
                        (incrBackupEnabled && bc->Description.GetIncrementalBackupConfig().GetOmitIndexes());
 
-    TString streamName = NBackup::ToX509String(TlsActivationContext->AsActorContext().Now()) + "_continuousBackupImpl";
+    TString streamName = NBackupCollection::ToX509String(TlsActivationContext->AsActorContext().Now()) + "_continuousBackupImpl";
 
     // Count items (base tables + non-omitted index impl tables) to match what
     // CCT will emit. The control op persists this count and uses it to detect

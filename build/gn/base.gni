@@ -70,8 +70,9 @@ template("expand_template") {
 # the flags of the target -- its deps, public_deps, configs, public_configs,
 # defines, include_dirs, cflags*, yql_abi_version -- and the shared
 # precompiled header of the target, but for enum_serialization_pch_exclude
-# (//build/gn/pch/targets.gni): there the .cpp defines specializations of
-# Out<>, FromStringImpl<>... the PCH has instantiated already.
+# (//build/gn/pch/global/enum_serialization.gni): there the .cpp defines
+# specializations of Out<>, FromStringImpl<>... the PCH has instantiated
+# already.
 template("serialize_enums") {
     _enum = "${target_name}_enum"
     _enum_include = "${target_name}_enum_include"
@@ -187,7 +188,7 @@ template("serialize_enums") {
             !label_matches(_owner, enum_serialization_pch_exclude)) {
             foreach(_group, pch_groups) {
                 if (label_matches(_owner, _group.targets)) {
-                    deps += [ "//build/gn/pch:pch_${_group.name}" ]
+                    deps += [ "//build/gn/pch/global:pch_${_group.name}" ]
                 }
             }
         }
@@ -417,16 +418,17 @@ template("library") {
             configs -= [ "//build/gn/config:no_undefined" ]
         }
 
-        # a precompiled header of its own for pch_targets
-        if (pch_mode == "per_target" &&
+        # a precompiled header of its own for pch_targets: the default
+        # toolchain only, as the global one
+        if (pch_mode == "per_target" && current_toolchain == default_toolchain &&
             label_matches(get_label_info(":$target_name", "label_no_toolchain"), pch_targets)) {
             precompiled_header = "pch.h"
-            precompiled_source = "//build/gn/pch/$_path/$target_name.h"
+            precompiled_source = "//build/gn/pch/per_target/$_path/$target_name.h"
             configs += [ "//build/gn/config:pch" ]
         }
 
         # the precompiled header of the group of the target
-        # (//build/gn/pch/groups.gni): C++ only, the default toolchain only
+        # (//build/gn/pch/global/groups.gni): C++ only, the default toolchain only
         # (see tool_toolchain)
         if (pch_mode == "global" && current_toolchain == default_toolchain && defined(sources) &&
             filter_include(sources, [ "*.cpp", "*.cc", "*.cxx" ]) != []) {
@@ -434,7 +436,7 @@ template("library") {
             not_needed([ "_pch_label" ])
             foreach(_group, pch_groups) {
                 if (label_matches(_pch_label, _group.targets)) {
-                    deps += [ "//build/gn/pch:pch_${_group.name}" ]
+                    deps += [ "//build/gn/pch/global:pch_${_group.name}" ]
                 }
             }
         }

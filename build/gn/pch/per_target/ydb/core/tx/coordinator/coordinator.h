@@ -1,0 +1,23 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "contrib/libs/protobuf/src/google/protobuf/text_format.h"
+#include "util/string/join.h"
+#include "ydb/core/base/appdata_fwd.h"
+#include "ydb/core/base/channel_profiles.h"
+#include "ydb/core/base/feature_flags.h"
+#include "ydb/core/base/tablet_pipe.h"
+#include "ydb/core/base/tx_processing.h"
+#include "ydb/core/scheme/scheme_tabledefs.h"
+#include "ydb/core/scheme_types/scheme_type_registry.h"
+#include "ydb/core/tablet/tablet_counters_aggregator.h"
+#include "ydb/core/tablet_flat/flat_cxx_database.h"
+#include "ydb/core/tablet_flat/tablet_flat_executed.h"
+#include "ydb/core/tx/coordinator/defs.h"
+#include "ydb/library/actors/interconnect/interconnect.h"
+#include "ydb/library/pdisk_io/buffer_pool.h"
+#include "ydb/library/pdisk_io/sector_map.h"
+#include "ydb/core/protos/tx.pb.h"
+#include "ydb/library/login/protos/login.pb.h"
+#include "ydb/library/mkql_proto/protos/minikql.pb.h"
+#include "ydb/public/api/protos/ydb_value.pb.h"

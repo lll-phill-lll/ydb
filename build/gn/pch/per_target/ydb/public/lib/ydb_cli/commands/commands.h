@@ -1,0 +1,30 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <condition_variable>
+#include <future>
+#include <queue>
+#include <thread>
+#include "contrib/libs/apache/arrow/cpp/src/arrow/util/string_view.h"
+#include "contrib/libs/fmt/include/fmt/format.h"
+#include "contrib/libs/ftxui/include/ftxui/dom/elements.hpp"
+#include "library/cpp/json/json_writer.h"
+#include "library/cpp/object_factory/object_factory.h"
+#include "library/cpp/time_provider/monotonic.h"
+#include "util/generic/guid.h"
+#include "util/stream/format.h"
+#include "util/thread/pool.h"
+#include "tools/enum_parser/enum_serialization_runtime/enum_runtime.h"
+#include "ydb/library/actors/util/rc_buf_backend.h"
+#include "ydb/library/actors/util/rope_cont_embedded_list.h"
+#include "ydb/library/workload/fulltext/fulltext_workload_params.h"
+#include "ydb/library/workload/tpcc/transactions.h"
+#include "ydb/library/workload/vector/vector_workload_params.h"
+#include "ydb/public/lib/ydb_cli/commands/ydb_root_common.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/coordination/coordination.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/draft/ydb_scripting.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/export/export.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/import/import.h"
+#include "ydb/public/sdk/cpp/src/client/persqueue_public/persqueue.h"
+#include "ydb/public/api/protos/ydb_coordination.pb.h"
+#include "ydb/public/api/protos/ydb_import.pb.h"

@@ -6669,7 +6669,7 @@ struct TSchemeShard::TTxInit : public TTransactionBase<TSchemeShard> {
                 TString backupCollectionPathStr = backupCollectionPath.PathString();
 
                 if (op.HasFullBackupTrimmedName()) {
-                    TString fullBackupName = NBackup::FullBackupDirName(op.GetFullBackupTrimmedName());
+                    TString fullBackupName = NBackupCollection::FullBackupDirName(op.GetFullBackupTrimmedName());
                     TString fullBackupPath = backupCollectionPathStr + "/" + fullBackupName;
 
                     for (const auto& tablePath : op.GetTablePathList()) {
@@ -6692,7 +6692,7 @@ struct TSchemeShard::TTxInit : public TTransactionBase<TSchemeShard> {
                 }
 
                 for (const auto& trimmedIncrName : op.GetIncrementalBackupTrimmedNames()) {
-                    TString incrBackupName = NBackup::IncrementalBackupDirName(trimmedIncrName);
+                    TString incrBackupName = NBackupCollection::IncrementalBackupDirName(trimmedIncrName);
                     TString incrBackupPath = backupCollectionPathStr + "/" + incrBackupName;
 
                     for (const auto& tablePath : op.GetTablePathList()) {

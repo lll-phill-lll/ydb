@@ -1053,7 +1053,7 @@ def pch_candidates(args):
         print("existing PCH over the same runs: %+.1fs in %d runs" % (sum(ms for _, ms in rows) / 1000.0, len(rows)))
 
 
-PCH_DIR = "build/gn/pch"   # <dir>/<name>.h of target //<dir>:<name>, see library() in //build/gn/base.gni
+PCH_DIR = "build/gn/pch/per_target"   # <dir>/<name>.h of target //<dir>:<name>, see library() in //build/gn/base.gni
 LIBCXX_INCLUDE = "contrib/libs/cxxsupp/libcxx/include/"
 
 

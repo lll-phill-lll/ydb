@@ -5,7 +5,7 @@ with pch_mode = "none" and time_trace = true, up to date for --targets,
 nothing building there, a trace and a .ninja_log entry for every C++ object
 built -- then reads the traces: the time of the C++ compiles, how much of it
 is parsing headers, the headers costing most and whether the PCH of
-//build/gn/pch have them. Prints the problems found.
+//build/gn/pch/global have them. Prints the problems found.
 
 It then reads the history of main: the first-parent commits of the 4 weeks
 before the merge base of HEAD and --main-ref, the files each one changed and
@@ -33,7 +33,7 @@ leaves the PCH (with the headers including it) or the targets it breaks
 leave the group, whichever gives more G; the group is formed again and
 checked again.
 
-Then it writes //build/gn/pch for pch_mode = "global": groups.gni (the
+Then it writes //build/gn/pch/global for pch_mode = "global": groups.gni (the
 targets, the generators of its headers, the flags of each group but the
 targets reaching a generator, which would make a cycle) and a <name>/pch.h
 per group, a group keeping the name of the one of the most targets in
@@ -41,9 +41,27 @@ common; the dirs of the groups gone are removed. Last, gn gen of the tree in
 a temporary dir: each C++ file of the baseline has the PCH of its group and
 the flags of its PCH.
 
-Usage: pch_update.py --baseline <out> [--targets all tests]
+With --per-target, for pch_mode = "per_target" (a developer's incremental
+build: the builds from scratch are not counted, q = 0): each target its own
+PCH, the headers adding most to G in its files -- a commit changing one
+rebuilds all its files -- if it gains enough; the same checks, a group being
+a target; it writes pch_targets of targets.gni and a <dir>/<name>.h per
+target, removes the ones of the targets gone; gn gen with pch_mode =
+"per_target". The data of "global" stays as it is.
+
+Nothing is written if the checks leave a PCH to fewer than half the targets
+having one before them; //build/gn/pch is put back as it was if writing it
+or gn gen fails.
+
+A run goes on from the last step saved in --cache-dir for the same baseline,
+tree (HEAD and the changes, this script aside), main and options (--fresh:
+from the start); the checks of a group done before are taken as they went.
+The output also goes to <cache dir>/logs/<time>.log.
+
+Usage: pch_update.py --baseline <out> [--per-target] [--targets all tests]
                      [--max-missing-traces 0.01] [-j N] [--check-jobs N]
                      [--main-ref origin/main] [--cache-dir ~/.cache/pch_update]
+                     [--fresh]
 Exit code: 0 if the build dir is fit and its traces and history have no
 problems, else 1.
 """
@@ -78,6 +96,8 @@ _LIBCXX = "contrib/libs/cxxsupp/libcxx/include/"
 _GEN = "<out>/gen/"
 _UTIL = "//util:util"
 _PCH_DIR = "build/gn/pch"
+_GLOBAL_DIR = os.path.join(_PCH_DIR, "global")          # pch_mode = "global": groups.gni, <name>/pch.h
+_PER_TARGET_DIR = os.path.join(_PCH_DIR, "per_target")  # pch_mode = "per_target": targets.gni, <dir>/<name>.h
 _INCLUDE_RE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]')
 _TOP_HEADERS = 20
 _HISTORY_WEEKS = 4
@@ -207,7 +227,7 @@ def check(args):
     log("reading the ninja manifest...")
     edges, rules = btr.parse_ninja_manifest(build_dir)
     cxx = [e for e in edges if e.rule == "cxx"]
-    pch_edges = [e for e in edges if e.target.startswith("//build/gn/pch:")
+    pch_edges = [e for e in edges if e.target.startswith("//%s" % _PCH_DIR)
                  or any(o.endswith((".pch", ".gch")) for o in e.outputs)]
     commands_of = dict((id(e), btr.edge_command(e, rules)) for e in cxx)
     with_pch = [e for e in cxx if "-include-pch" in commands_of[id(e)]]
@@ -317,18 +337,18 @@ def check(args):
 # =============================================================================
 
 def pch_headers():
-    """The headers of the PCH of //build/gn/pch now, as paths there."""
-    pch_dir = os.path.join(_ROOT, _PCH_DIR)
+    """The headers of the PCH of //build/gn/pch/global now, as paths there."""
+    pch_dir = os.path.join(_ROOT, _GLOBAL_DIR)
     return sorted(os.path.join(d, f) for d in os.listdir(pch_dir) if os.path.isdir(os.path.join(pch_dir, d))
                   for f in os.listdir(os.path.join(pch_dir, d)) if f.endswith(".h"))
 
 
 def pch_roots():
-    """{include of a PCH of //build/gn/pch: (PCH header names)}; libc++
+    """{include of a PCH of //build/gn/pch/global: (PCH header names)}; libc++
     headers spelled as the traces name them."""
     out = collections.defaultdict(set)
     for pch in pch_headers():
-        with open(os.path.join(_ROOT, _PCH_DIR, pch), encoding="utf-8") as f:
+        with open(os.path.join(_ROOT, _GLOBAL_DIR, pch), encoding="utf-8") as f:
             for line in f:
                 m = _INCLUDE_RE.match(line)
                 if m:
@@ -521,7 +541,7 @@ def traces(args, base):
             problems["headers: neither in the source tree, the build dir, the sysroot nor the compiler"].append(name)
     missing = [display(r) for r in sorted(roots) if not any(includes(name, r) for name in parse)]
     if missing:
-        problems["headers of //build/gn/pch in no trace"].extend(missing)
+        problems["headers of //build/gn/pch/global in no trace"].extend(missing)
 
     print("traces:           %d of %d read" % (read, len(traced)))
     print("problems:         %d" % sum(len(v) for v in problems.values()))
@@ -745,7 +765,7 @@ def pch_owner(label):
         return label
     owner = "%s:%s" % (d, name[:-len(_ENUM_OBJS)])
     if _enum_exclude is None:
-        _enum_exclude = [p for _, ps in gni_lists(os.path.join(_ROOT, _TARGETS_GNI), "enum_serialization_pch_exclude")
+        _enum_exclude = [p for _, ps in gni_lists(os.path.join(_ROOT, _ENUM_EXCLUDE_GNI), "enum_serialization_pch_exclude")
                          for p in ps]
     return label if label_matches(owner, _enum_exclude) else owner
 
@@ -1026,6 +1046,11 @@ _TOP_DIRS = 4
 _TOP_ROOTS = 3
 _REASONS = ("files without PCH", "changes often", "few files for the load cost", "includes such headers",
             "dropped by the checks")
+# --per-target: a developer's incremental build -- the builds from scratch
+# not counted -- and the least G a target's own PCH is written for
+_Q_PER_TARGET = 0.0
+_MIN_TARGET_G = 10**6           # us of G
+_TOP_TARGETS = 25               # rows of the report
 
 
 def strong_components(children):
@@ -1161,8 +1186,10 @@ def build_model(base):
     # a unit can be a root of a PCH if a header of it compiles alone
     ok = base.get("self_contained")
     rootable = bytearray(1 if ok is None or any(h in ok for h in hs) else 0 for hs in headers)
+    # of each unit, the units it includes that can be a root: a selection starts from a copy
+    pending = [sum(1 for v in cs if rootable[v]) for cs in unit_children]
     return {"comp": comp, "headers": headers, "children": unit_children, "parents": unit_parents,
-            "rootable": rootable,
+            "rootable": rootable, "pending": pending,
             "files": files, "own": own, "parse": parse, "build": build, "total_parse": total_parse,
             "commits": commits, "ready": ready, "nfiles": nfiles, "ntotal": ntotal,
             "compile": [base["compile_us"][obj] for obj in objs], "rebuilt": base["rebuilt"],
@@ -1184,7 +1211,8 @@ class Selection(object):
             for t in m["files_of"][target]:
                 cons[t] = 1
         self.n_cons = sum(cons)
-        self.c_cons = sum(c[t] for t in range(nfiles) if cons[t])
+        self.c_cons = sum(c[t] for target in members for t in m["files_of"][target])
+        self.q = m.get("q", _Q)
         ncommits = m["ncommits"]
         self.rebuilt_c, self.rebuilt_n = [0] * ncommits, [0] * ncommits
         for k, rebuilt in enumerate(m["rebuilt"]):
@@ -1204,8 +1232,7 @@ class Selection(object):
         self.nonhit_n = sum(self.rebuilt_n)
         self.ready = 0
         self.selected = bytearray(len(m["headers"]))
-        rootable = m["rootable"]
-        self.pending = [sum(1 for v in cs if rootable[v]) for cs in m["children"]]
+        self.pending = list(m["pending"])
         self.s1, self.s2, self.s2_epoch, self.pot = {}, {}, {}, {}
         self.hit_epoch = self.p_epoch = 0
         self.pk = {}
@@ -1218,7 +1245,7 @@ class Selection(object):
         cold = saved - build - _CORES * (ready + build)
         warm = (hit * (saved - self.c_cons - build) + hit_c + nonhit_p
                 - _LOAD_SHARE * build * nonhit_n) / max(self.m["ncommits"], 1)
-        return _Q * cold + (1 - _Q) * warm, cold, warm
+        return self.q * cold + (1 - self.q) * warm, cold, warm
 
     def sums(self, u):
         if u not in self.s1 or self.s2_epoch[u] != self.hit_epoch:
@@ -1327,8 +1354,9 @@ class Selection(object):
                 if rootable[u] and not self.banned[u] and self.sums(u)[0] > 0:
                     heapq.heappush(heap, (-self.gain(self.with_children(u)), u, self.p_epoch))
 
-        push(u for u in range(len(m["headers"])) if not self.pending[u])
-        candidates = sorted(range(len(m["headers"])), key=lambda u: -m["total_parse"][u])[:_SEED_CANDIDATES]
+        units = m.get("units", range(len(m["headers"])))
+        push(u for u in units if not self.pending[u])
+        candidates = sorted(units, key=lambda u: -m["total_parse"][u])[:_SEED_CANDIDATES]
         while True:
             while heap:
                 g, u, epoch = heapq.heappop(heap)
@@ -1369,7 +1397,7 @@ class Selection(object):
             for t in files:
                 s = self.p[t] - load
                 h = hits.get(t, 0)
-                total += _Q * s + (1 - _Q) * (s * (nhit + m["ntotal"][t] - h) - m["compile"][t] * (nhit - h)) / ncommits
+                total += self.q * s + (1 - self.q) * (s * (nhit + m["ntotal"][t] - h) - m["compile"][t] * (nhit - h)) / ncommits
             out[target] = total
         return out
 
@@ -1547,6 +1575,102 @@ def groups(args, base):
     return True
 
 
+class _Sparse(dict):
+    """{unit: the files, own or parse of it} of the files of a target; none
+    for the units they do not parse."""
+
+    def __missing__(self, key):
+        return ()
+
+
+def by_file(m):
+    """Of each file, the units it parses ([units], [own], [parse] by file);
+    of each target, {commit: its files the commit rebuilds}. Made once per
+    model."""
+    if "by_file" not in m:
+        n = m["nfiles"]
+        units = [array.array("i") for _ in range(n)]
+        own = [array.array("q") for _ in range(n)]
+        parse = [array.array("q") for _ in range(n)]
+        for u, fs in enumerate(m["files"]):
+            for t, e, p in zip(fs, m["own"][u], m["parse"][u]):
+                units[t].append(u)
+                own[t].append(e)
+                parse[t].append(p)
+        target_of = [None] * n
+        for target, files in m["files_of"].items():
+            for t in files:
+                target_of[t] = target
+        rebuilt = collections.defaultdict(dict)
+        for k, files in enumerate(m["rebuilt"]):
+            for t in files:
+                rebuilt[target_of[t]].setdefault(k, []).append(t)
+        m["by_file"], m["rebuilt_of"] = (units, own, parse), rebuilt
+    return m["by_file"]
+
+
+def target_model(m, target):
+    """The model of the files of one target: the units they parse, the
+    commits rebuilding them; the rest as in `m`."""
+    units_of, own_of, parse_of = by_file(m)
+    acc = collections.defaultdict(lambda: ([], [], []))
+    for t in m["files_of"][target]:
+        for u, e, p in zip(units_of[t], own_of[t], parse_of[t]):
+            a = acc[u]
+            a[0].append(t)
+            a[1].append(e)
+            a[2].append(p)
+    files, own, parse = _Sparse(), _Sparse(), _Sparse()
+    for u, (fs, es, ps) in acc.items():
+        files[u], own[u], parse[u] = array.array("i", fs), array.array("q", es), array.array("q", ps)
+    rebuilt_of = m["rebuilt_of"].get(target, {})
+    sub = dict(m)
+    sub.update(files=files, own=own, parse=parse, units=sorted(acc), q=_Q_PER_TARGET,
+               rebuilt=[rebuilt_of.get(k, ()) for k in range(m["ncommits"])])
+    return sub
+
+
+def target_selection(m, target, banned=None):
+    """The PCH of a target of its own, if it gains _MIN_TARGET_G: else None.
+    A target whose files would not gain it with all they parse in it and
+    nothing changing is not looked at."""
+    _, own_of, _ = by_file(m)
+    bound = sum(sum(own_of[t]) * m["ntotal"][t] for t in m["files_of"][target]) / max(m["ncommits"], 1)
+    if bound < _MIN_TARGET_G:
+        return None
+    sel = Selection(target_model(m, target), set([target]), banned)
+    return sel if sel.value >= _MIN_TARGET_G else None
+
+
+def per_target_groups(args, base):
+    """--per-target: a group of each target gaining from a PCH of its own."""
+    log("selecting the PCH of each target...")
+    # the enum serialization (<target>_enum_objs) has no PCH in this mode: the
+    # source_set of serialize_enums takes no precompiled_header; its files are
+    # of a target of their own, not of the one whose PCH they take in "global"
+    target_of = base["target_of"]
+    for obj, target in target_of.items():
+        prefix = os.path.basename(obj).partition(".")[0]
+        if prefix.endswith(_ENUM_OBJS):
+            target_of[obj] = "%s:%s" % (target.partition(":")[0], prefix)
+    m = build_model(base)
+    contrib, contrib_bans = no_util(base, m)
+    base.update(contrib=contrib, contrib_bans=contrib_bans, per_target=True)
+    banned = banned_units(m, set(m["comp"][h] for h in contrib_bans))
+    found, considered = [], 0
+    for n, class_objs in enumerate(base["classes"], 1):
+        for target in sorted(set(target_of[o] for o in class_objs if not target_of[o].endswith(_ENUM_OBJS))):
+            considered += 1
+            sel = target_selection(m, target, banned if target in contrib else None)
+            if sel is not None:
+                found.append((n, sel))
+    base.update(model=m, found=found)
+    print("%-18s%d of %d targets gain %s+ per build from a PCH of their own (q = %g)" % (
+        "per target:", len(found), considered, duration(_MIN_TARGET_G), _Q_PER_TARGET))
+    report_groups(base, "targets")
+    return True
+
+
 def selection_roots(base, m, sel):
     """The headers a PCH includes: of the units no selected unit includes,
     the headers compiling alone."""
@@ -1596,18 +1720,25 @@ def report_groups(base, title):
     print("  #   class targets   files headers   roots      pch    start commits     cold     warm        G")
     base["groups"] = []
     details = []
+    # --per-target: a group is a target, the ones of the most G shown
+    per_target = base.get("per_target")
+    shown = set(sorted(range(len(found)), key=lambda g: -found[g][1].value)[:_TOP_TARGETS]
+                if per_target else range(len(found)))
     for g, (n, sel) in enumerate(found, 1):
         hs = [h for h in range(len(names)) if sel.selected[comp[h]]]
         roots = selection_roots(base, m, sel)
         base["groups"].append({"class": n, "targets": sorted(sel.members), "headers": [names[h] for h in hs],
                                "roots": [names[h] for h in roots]})
+        if g - 1 not in shown:
+            continue
         value, cold, warm = sel.evaluate(sel.parse, sel.build, len(sel.hit), sel.hit_c,
                                          sel.nonhit_p, sel.nonhit_n, sel.ready)
         print("  %-3d %5d %7d %7d %7d %7d %8s %8s %7d %8s %8s %8s%s" % (
             g, n, len(sel.members), sel.n_cons, len(hs), len(roots), duration(sel.build),
             duration(sel.ready + sel.build), len(sel.hit), hours(cold), hours(warm), hours(value),
             "  contrib" if is_contrib(base, sel) else ""))
-        dirs = collections.Counter("/".join(t.split(":")[0].split("/")[:4]) for t in sel.members)
+        dirs = collections.Counter(t if per_target else "/".join(t.split(":")[0].split("/")[:4])
+                                   for t in sel.members)
         root_parse = []
         for h in roots:
             root_parse.append((sum(p for t, p in zip(base["header_files"][h], base["header_parse"][h])
@@ -1617,6 +1748,10 @@ def report_groups(base, title):
             g, ", ".join("%s %d" % kv for kv in dirs.most_common(_TOP_DIRS)),
             ", ..." if len(dirs) > _TOP_DIRS else "",
             ", ".join("%s %s" % (display(names[h]), hours(us)) for us, h in root_parse[:_TOP_ROOTS])))
+    if len(shown) < len(found):
+        print("  ... %d more, G %s down to %s" % (
+            len(found) - len(shown), hours(min(found[g][1].value for g in shown)),
+            hours(min(sel.value for _, sel in found))))
     print("%s: targets by dir; roots of the most parse:" % title)
     for line in details:
         print(line)
@@ -1628,7 +1763,16 @@ def report_groups(base, title):
         print("  %-60s %8s %7d   %s" % (display(names[h]), hours(us), residual_files[h],
                                        residual_reason[h].most_common(1)[0][0]))
 
-    # the includes of the PCH of //build/gn/pch now
+    if per_target:
+        # the targets of their own PCH now
+        now = set(t for _, ts in gni_lists(os.path.join(_ROOT, _TARGETS_GNI), "pch_targets") for t in ts)
+        new = set(t for _, sel in found for t in sel.members)
+        print("current pch_targets: %d; kept %d, new %d, gone %d%s" % (
+            len(now), len(now & new), len(new - now), len(now - new),
+            (", e.g. " + ", ".join(sorted(now - new)[:3])) if now - new else ""))
+        return
+
+    # the includes of the PCH of //build/gn/pch/global now
     print("current PCH (includes: in each group, in none):")
     by_suffix = collections.defaultdict(list)
     for h, name in enumerate(names):
@@ -1660,6 +1804,13 @@ def report_groups(base, title):
 # =============================================================================
 
 _CHECK_ROUNDS = 12
+_MIN_KEPT = 0.5                 # share of the targets with a PCH the checks may leave: fewer, and nothing is written
+_TOP_FAILURES = 5               # reasons of failing shown
+
+
+def failure_kind(msg):
+    """A failure message without its paths and numbers: the failures alike count together."""
+    return re.sub(r"\d+", "N", re.sub(r"[^\s:'\"]*/[^\s:'\"]*", "<path>", msg))[:160]
 _MACRO_PARTS = 4                # a set of macros changing -E is tried again as these parts
 _DIRECTIVE_RE = re.compile(r"^\s*#\s*(define|include|import)\b\s*(.*)$")
 _DEFINE_RE = re.compile(r"^([A-Za-z_]\w*)(\([^)]*\))?\s*(.*)$")
@@ -1668,6 +1819,8 @@ _MARKER_RE = re.compile(r'^# (\d+) "((?:[^"\\]|\\.)*)"((?: \d)*)$')
 _INCLUDED_FROM_RE = re.compile(r"^In file included from (.+?):(\d+):$")
 _ERROR_RE = re.compile(r"^(.+?):(\d+):\d+: (?:fatal )?error: (.*)$")
 _DIAG_RE = re.compile(r"^(.+?):(\d+):\d+: (fatal error|error|note): (.*)$")
+_QUOTED_RE = re.compile(r"'((?:[A-Za-z_]\w*)?(?:::[A-Za-z_]\w*)+|[A-Za-z_]\w*)'")
+_NAME_CULPRITS = 3              # headers of a name an error quotes: more, and the error is on none
 _MACRO_LINE_RE = re.compile(r"^#define ([A-Za-z_]\w*)")
 _MACRO_DIRECTIVE_RE = re.compile(r"^\s*#\s*(define|undef)\s+([A-Za-z_]\w*)", re.M)
 _METADATA_RE = re.compile(r"^!(\d+) = (?:distinct )?!(\w+)\((.*)\)$")
@@ -1832,7 +1985,13 @@ def static_inits(path, paths):
 
     def file_of(n):
         f = fields(fields(n).get("file"))
-        return paths.normalize(os.path.join(f.get("directory", ""), f.get("filename", "")))
+        p = os.path.normpath(os.path.join(f.get("directory", ""), f.get("filename", "")))
+        if not os.path.isabs(p):
+            # -ffile-prefix-map (//build/gn/config:path_prefix_map) cuts the
+            # source root and gen/ off the paths of the debug info, not of -E or -MD
+            p = next((q for q in (os.path.join(r, p) for r in (paths.source_root, os.path.join(
+                paths.build_dir, "gen"), paths.build_dir) if r) if os.path.exists(q)), p)
+        return paths.normalize(p)
 
     out = []
     for name, (sp, locs) in bodies.items():
@@ -1917,17 +2076,17 @@ class Probe(object):
         self.compile = ([base["compiler"]] + o0 + self.defines + includes +
                         ["-w", "-ferror-limit=0", "-O0", "-gline-tables-only", "-S", "-emit-llvm",
                          "-MD", "-MF", self.depfile, self.source, "-o", self.ll])
-        # as //build/gn/pch builds it
+        # as //build/gn/pch/global builds it
         self.pch = os.path.join(tmp, "probe%d.pch" % key)
         self.build_pch = self.common + ["-ferror-limit=0", "-x", "c++-header", "-fpch-instantiate-templates",
                                         "-Xclang", "-fno-pch-timestamp", self.header, "-o", self.pch]
         self.macros = self.common + ["-dM", "-E", self.header]
         empty = os.path.join(tmp, "empty.cpp")
         open(empty, "w").close()
-        obj, so = os.path.join(tmp, "link%d.o" % key), os.path.join(tmp, "link%d.so" % key)
-        self.link = [self.common + ["-include-pch", self.pch, "-c", empty, "-o", obj],
+        self.obj, self.so = os.path.join(tmp, "link%d.o" % key), os.path.join(tmp, "link%d.so" % key)
+        self.link = [self.common + ["-include-pch", self.pch, "-c", empty, "-o", self.obj],
                      [base["compiler"]] + [a for a in flags if a.startswith("--sysroot")] + _LINK_FLAGS +
-                     [obj, "-o", so] + _SYSTEM_LIBS]
+                     [self.obj, "-o", self.so] + _SYSTEM_LIBS]
         # a file passing with a PCH of these -D and include dirs passes with fewer headers
         self.key = (tuple(self.defines), tuple(self.include_dirs))
         self.flags, self.base = flags, base
@@ -2002,6 +2161,14 @@ def check_round(args, base, groups, tmp):
                     having[name].add(base["target_of"][obj])
         macros_of[g] = (dict((name, c.most_common(1)[0][0]) for name, c in values.items()), having)
 
+    # a group checked before -- this run or an earlier one of the same tree
+    # and baseline -- is not compiled again
+    cache = base.setdefault("check_cache", {})
+    keys = dict((g, check_key(base, probes[g], macros_of[g][0])) for g in groups)
+    hits = dict((g, cache[keys[g]]) for g in groups if keys[g] in cache)
+    if hits:
+        log("checks: %d of %d groups as checked before" % (len(hits), len(groups)))
+
     # each group goes on as soon as its own runs are done
     results, waiting = {}, collections.defaultdict(list)
     found = collections.defaultdict(lambda: collections.defaultdict(lambda: [set(), []]))  # g -> macro -> [files, errors]
@@ -2011,15 +2178,59 @@ def check_round(args, base, groups, tmp):
     passed = base.setdefault("passed_with", {})     # file -> (probe key, headers) it passed with
     skipped = collections.Counter()                 # group -> files passed before
     executor = concurrent.futures.ProcessPoolExecutor(args.check_jobs)
+    # a few groups at a time, their files removed when their runs are done:
+    # a PCH per target, all of them at once, do not fit on the disk
+    queue = collections.deque(sorted(g for g in probes if g not in hits))
+    in_flight = collections.Counter()           # group -> runs not done
+    window = 2 * args.check_jobs
+    progress = [0, len(queue), 0, time.time(), 0]   # groups done, of, last step logged, start, failures logged
+
+    def group_of(kind, key):
+        return sets[key].g if kind == "E" else key[0] if kind == "tu" else key
 
     def submit(kind, key, argv):
         runs[0] += 1
+        in_flight[group_of(kind, key)] += 1
         running.add(executor.submit(_run, (kind, key, argv, base["build_dir"])))
 
     def try_set(g, macros, parent):
         s = _MacroSet(g, tuple(macros), parent)
         sets.append(s)
         submit("E", len(sets) - 1, probes[g].preprocess([macros_of[g][0][c] for c in s.macros]))
+
+    def start(g):
+        p = probes[g]
+        submit("compile", g, p.compile)
+        submit("pch", g, p.build_pch)
+        submit("E0", g, p.preprocess())
+        if macros_of[g][0]:
+            try_set(g, sorted(macros_of[g][0]), None)
+
+    def retire(g):
+        """What the results need of the files of a group, then the files go."""
+        p = probes[g]
+        ok = not results[("compile", g)][0]
+        p.reached = depfile_names(p.depfile, base["paths"]) if ok else set()
+        p.inits = list(static_inits(p.ll, base["paths"])) if ok else []
+        for path in (p.pch, p.ll, p.depfile, p.obj, p.so):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        # the first failures at once, not after the round
+        for kind in ("pch", "compile", "E0"):
+            rc, _, err, _ = results[(kind, g)]
+            if rc and progress[4] < _TOP_FAILURES:
+                progress[4] += 1
+                log("checks: group %d, %s failed: %s" % (g, kind, (err.strip().splitlines() or ["?"])[-1][:300]))
+                break
+        progress[0] += 1
+        step = progress[0] * 20 // max(progress[1], 1)
+        if step > progress[2]:
+            progress[2] = step
+            spent = time.time() - progress[3]
+            log("checks: %d of %d groups, %d min, about %d min more" % (
+                progress[0], progress[1], spent / 60, spent * (progress[1] - progress[0]) / progress[0] / 60))
 
     def finish(s):
         if len(s.macros) == 1 or not s.pending:
@@ -2073,26 +2284,29 @@ def check_round(args, base, groups, tmp):
         while waiting[g]:
             done(*waiting[g].pop())
 
-    for g, p in sorted(probes.items()):
-        submit("compile", g, p.compile)
-        submit("pch", g, p.build_pch)
-        submit("E0", g, p.preprocess())
-        if macros_of[g][0]:
-            try_set(g, sorted(macros_of[g][0]), None)
     try:
+        while queue and len(in_flight) < window:
+            start(queue.popleft())
         while running:
             finished, _ = concurrent.futures.wait(running, return_when=concurrent.futures.FIRST_COMPLETED)
             for fut in finished:
                 running.discard(fut)
                 kind, key, res = fut.result()
+                g = group_of(kind, key)
                 if kind == "E":
-                    waiting[sets[key].g].append((sets[key], res))
-                    advance(sets[key].g)
+                    waiting[g].append((sets[key], res))
+                    advance(g)
                 elif kind in ("tu", "link"):
                     results[(kind, key)] = res
                 else:
                     results[(kind, key)] = res
                     advance(key)
+                in_flight[g] -= 1
+                if not in_flight[g]:
+                    del in_flight[g]
+                    retire(g)
+                    while queue and len(in_flight) < window:
+                        start(queue.popleft())
     finally:
         for fut in running:
             fut.cancel()
@@ -2101,7 +2315,10 @@ def check_round(args, base, groups, tmp):
 
     out, by_macros = {}, []                     # by_macros: (group, file, target, message, where)
     links = dict((g, results[("link", g)]) for g in groups if ("link", g) in results)
+    passed_of = collections.defaultdict(list)   # group -> its files passing
     for g, (n, sel) in groups.items():
+        if g in hits:
+            continue
         p = probes[g]
         macros, having = macros_of[g]
         rc_e, d0, err_e, edges = results[("E0", g)]
@@ -2135,7 +2352,9 @@ def check_round(args, base, groups, tmp):
         if rc or rc_pch:
             continue
         # a file failing with the PCH: put on the first header of the PCH its
-        # first error and the notes of it name; else on the macros (below)
+        # first error and the notes of it name, a note not on one the file
+        # includes alone (a "did you mean" there: the name it means); else on
+        # the macros, else on the names (below)
         in_pch = set(p.headers)
         fc = r["files"]
         fc["total"] += len(p.files)
@@ -2147,6 +2366,7 @@ def check_round(args, base, groups, tmp):
             rc_t, _, err_t, _ = results[("tu", (g, t))]
             if not rc_t:
                 passed[t] = (p.key, p.header_set)
+                passed_of[g].append(t)
                 continue
             fc["failing"] += 1
             target = base["target_of"][objs[t]]
@@ -2162,7 +2382,7 @@ def check_round(args, base, groups, tmp):
                     msg = "%s:%s: %s" % (display(normalize(md.group(1))), md.group(2), md.group(4))
                 where.append((normalize(md.group(1)), int(md.group(2))))
                 hh = header_id.get(normalize(md.group(1)))
-                if h is None and hh in in_pch:
+                if h is None and hh in in_pch and not (md.group(3) == "note" and t in base["header_files"][hh]):
                     h = hh
             msg = "%s: %s" % (display(normalize(base["source_of"][objs[t]])),
                               msg or (err_t.strip().splitlines() or ["the compiler failed"])[-1])
@@ -2173,11 +2393,11 @@ def check_round(args, base, groups, tmp):
                 r["conflicts"].setdefault(target, []).append((h, msg))
             else:
                 by_macros.append((g, t, target, msg, where))
-        reached = depfile_names(p.depfile, base["paths"])
+        reached = p.reached
         in_pch = set(names[h] for h in p.headers)
         r["missing"] = len(in_pch - reached)
         r["extra"] = len(reached - in_pch - set([normalize(p.source)]))
-        for name, line in static_inits(p.ll, base["paths"]):
+        for name, line in p.inits:
             h = header_id.get(name)
             if h is None:
                 if r["failed"] is None:
@@ -2200,9 +2420,64 @@ def check_round(args, base, groups, tmp):
                     r["macros"][c].add(h)
                 elif r["failed"] is None:
                     r["failed"] = "-E with %s: %s" % (macros[c], line)
-    put_on_macros(args, base, probes, by_macros, out)
+    put_on_names(base, probes, put_on_macros(args, base, probes, by_macros, out), out)
     link_conflicts(args, base, probes, links, out)
+    for g in out:
+        cache[keys[g]] = check_result_names(base, out[g], passed_of[g])
+    for g, cached in hits.items():
+        p = probes[g]
+        out[g], files = check_result_ids(base, cached)
+        for t in files:
+            passed[t] = (p.key, p.header_set)
     return out
+
+
+_CHECKS_VERSION = 3             # of what check_round() finds: older results in the cache are not taken
+
+
+def check_key(base, p, macros):
+    """What the checks of a probe depend on, the tree and the baseline
+    aside (the cache is of them)."""
+    names, objs = base["header_names"], base["objs"]
+    data = (_CHECKS_VERSION, base["compiler"], tuple(p.flags), tuple(p.defines),
+            tuple(tuple(x) for x in p.include_dirs), tuple(names[h] for h in p.roots),
+            tuple(sorted(names[h] for h in p.headers)), tuple(objs[t] for t in p.files),
+            tuple(sorted(macros.items())))
+    return hashlib.sha1(repr(data).encode("utf-8")).hexdigest()
+
+
+def check_result_names(base, r, passed):
+    """A result of check_round() with names for the header and file ids."""
+    names, objs = base["header_names"], base["objs"]
+    return {"errors": dict((names[h], v) for h, v in r["errors"].items()),
+            "inits": dict((names[h], v) for h, v in r["inits"].items()),
+            "macros": dict((c, set(names[h] for h in hs)) for c, hs in r["macros"].items()),
+            "conflicts": dict((t, [(None if h is None else names[h], msg) for h, msg in v])
+                              for t, v in r["conflicts"].items()),
+            "targets": dict(r["targets"]), "missing": r["missing"], "extra": r["extra"],
+            "failed": r["failed"], "edges": list(r["edges"]), "files": collections.Counter(r["files"]),
+            "passed": [objs[t] for t in passed]}
+
+
+def check_result_ids(base, c):
+    """(the result, the files passing) of check_result_names()."""
+    header_id = base["header_id"]
+    index = base.get("obj_index")
+    if index is None:
+        index = base["obj_index"] = dict((obj, t) for t, obj in enumerate(base["objs"]))
+
+    def ids(d):
+        return dict((header_id[k], v) for k, v in d.items() if k in header_id)
+    macros = collections.defaultdict(set)
+    for c_, hs in c["macros"].items():
+        macros[c_] = set(header_id[h] for h in hs if h in header_id)
+    r = {"errors": ids(c["errors"]), "inits": ids(c["inits"]), "macros": macros,
+         "conflicts": dict((t, [(header_id.get(h) if h is not None else None, msg) for h, msg in v])
+                           for t, v in c["conflicts"].items()),
+         "targets": collections.defaultdict(set, c["targets"]), "missing": c["missing"], "extra": c["extra"],
+         "failed": c["failed"], "edges": c["edges"], "files": collections.Counter(c["files"])}
+    r["files"]["from the cache"] += r["files"]["checked"]
+    return r, [index[o] for o in c["passed"] if o in index]
 
 
 def put_on_macros(args, base, probes, failing, out):
@@ -2235,7 +2510,7 @@ def put_on_macros(args, base, probes, failing, out):
         return set(_TOKEN_RE.findall(text[line - 1])) if 0 < line <= len(text) else set()
 
     if not failing:
-        return
+        return []
     results = {}
     with concurrent.futures.ProcessPoolExecutor(args.check_jobs) as executor:
         jobs = [("dM", ("pch", g), probes[g].macros) for g in sorted(set(f[0] for f in failing))]
@@ -2243,6 +2518,7 @@ def put_on_macros(args, base, probes, failing, out):
         for kind, key, res in executor.map(_run, [(k, key, argv, base["build_dir"]) for k, key, argv in jobs]):
             results[key] = res
     log("checks: %d compiler runs for the macros" % len(jobs))
+    rest = []
     for g, t, target, msg, where in failing:
         r = out[g]
         pch, alone = results[("pch", g)][1] or {}, results[("file", t)][1] or {}
@@ -2257,7 +2533,46 @@ def put_on_macros(args, base, probes, failing, out):
                 defs, undefs = directives_of(h)
                 if defined & defs or removed & undefs:
                     hs.add(h)
-        r["files"]["via macros" if hs else "unattributed"] += 1
+        if not hs:
+            rest.append((g, t, target, msg, where))
+            continue
+        r["files"]["via macros"] += 1
+        for h in sorted(hs):
+            r["conflicts"].setdefault(target, []).append((h, msg))
+    return rest
+
+
+def put_on_names(base, probes, failing, out):
+    """The files failing with the PCH on no header of it nor on its macros:
+    on the headers of the PCH the file does not include alone having a name
+    the error quotes (a name of the PCH hiding the one the file means, as
+    'NKikimr::NSchemeShard::NBackup' for NKikimr::NBackup), the qualified
+    names first; on none if more than _NAME_CULPRITS have it."""
+    names, header_files = base["header_names"], base["header_files"]
+    texts = {}
+
+    def has_text(name, text):
+        if name not in texts:
+            try:
+                with open(real_path(base, name), encoding="utf-8", errors="replace") as f:
+                    texts[name] = f.read()
+            except OSError:
+                texts[name] = ""
+        return text in texts[name]
+
+    for g, t, target, msg, where in failing:
+        p, r = probes[g], out[g]
+        quoted = [[w for w in q.split("::") if w] for q in _QUOTED_RE.findall(msg.partition(" did you mean ")[0])]
+        hs = []
+        for parts in sorted((q for q in quoted if q[-1] not in _NOT_NAMES), key=lambda q: -len(q)):
+            cands = [h for h in p.headers if parts[-1] in file_tokens(base, names[h]) and t not in header_files[h]]
+            if len(parts) > 1:
+                cands = [h for h in cands if parts[-2] in file_tokens(base, names[h])]
+                cands = [h for h in cands if has_text(names[h], "::".join(parts[-2:]))] or cands
+            if cands and len(cands) <= _NAME_CULPRITS:
+                hs = cands
+                break
+        r["files"]["via names" if hs else "unattributed"] += 1
         for h in sorted(hs) or [None]:
             r["conflicts"].setdefault(target, []).append((h, msg))
 
@@ -2409,6 +2724,7 @@ def checks(args, base):
         return a >= b
 
     groups = dict(enumerate(base["found"]))     # id -> (class, selection)
+    per_target = base.get("per_target")         # a group is a target, its selection of its files
     # what the checks found stays with the targets: a group made again of
     # them has no PCH with the headers dropped for them or breaking them; the
     # targets moved for a -D go together
@@ -2423,23 +2739,34 @@ def checks(args, base):
         return set().union(*(target_bans[t] for t in members)) if members else set()
 
     def signature(sel):
-        comp = base["model"]["comp"]
+        comp = sel.m["comp"]
         return frozenset(sel.members), frozenset(h for h in range(len(names)) if sel.selected[comp[h]])
     checked = {}                                # group -> signature of what was checked
+    # a group made again as one checked: as it went then (a failed one made
+    # again from its targets would fail again, round after round)
+    clean, failed = set(), set()                # signatures
     no_pch = set()                              # targets failing with any PCH
+    no_pch_why = collections.Counter()          # reason -> targets
     inits = {}                                  # header -> where: kept, link_conflicts() checks what they need
     next_id = [len(groups)]
     pending = set(groups)
-    examples = collections.OrderedDict()
     totals = collections.Counter()
     rounds = 0
+    had = set().union(*(sel.members for _, sel in groups.values()))
+    cache_path = state_path(args, base, "checks")
+    if cache_path:
+        base["check_cache"] = load_pickle(cache_path) or {}
     tmp = tempfile.mkdtemp(prefix="pch_update.")
     try:
         while pending and rounds < _CHECK_ROUNDS:
             rounds += 1
             m = base["model"]
+            examples = collections.OrderedDict()
+            fail_kinds = collections.Counter()      # the reasons of the groups failing
             log("checks, round %d: %d groups..." % (rounds, len(pending)))
             found = check_round(args, base, dict((g, groups[g]) for g in pending), tmp)
+            if cache_path:
+                save_pickle(cache_path, base["check_cache"])
             for g in found:
                 checked[g] = signature(groups[g][1])
             counts, files = collections.Counter(), collections.Counter()
@@ -2462,7 +2789,14 @@ def checks(args, base):
                 if r["failed"]:
                     counts["failed"] += 1
                     examples.setdefault("failed", r["failed"])
-                    leftovers[n] |= sel.members
+                    fail_kinds[failure_kind(r["failed"])] += 1
+                    failed.add(checked[g])
+                    if per_target:
+                        # a PCH of the target's own failing: no other to try
+                        no_pch |= sel.members
+                        no_pch_why[failure_kind(r["failed"])] += len(sel.members)
+                    else:
+                        leftovers[n] |= sel.members
                     del groups[g]
                     continue
                 ban = set()
@@ -2483,6 +2817,7 @@ def checks(args, base):
                     examples.setdefault("targets failing", "%s: %s" % (target, failures[0][1]))
                     if any(h is None for h, _ in failures):
                         no_pch.add(target)
+                        no_pch_why["a file failing on no header of the PCH"] += 1
                         members.discard(target)
                         examples.setdefault("unattributed", next(msg for h, msg in failures if h is None))
                         continue
@@ -2492,7 +2827,7 @@ def checks(args, base):
                     have &= members
                     if not have or h in ban:
                         continue
-                    if choose(m, sel, members, group_bans(members) | ban, set([h]), have):
+                    if choose(sel.m, sel, members, group_bans(members) | ban, set([h]), have):
                         ban.add(h)
                         counts["failing: headers dropped"] += 1
                     else:
@@ -2508,7 +2843,7 @@ def checks(args, base):
                     hs = hs - ban
                     if not have or not hs:
                         continue
-                    if choose(m, sel, members, group_bans(members) | ban, hs, have):
+                    if choose(sel.m, sel, members, group_bans(members) | ban, hs, have):
                         ban |= hs
                         counts["-D: headers dropped"] += len(hs)
                     else:
@@ -2535,7 +2870,13 @@ def checks(args, base):
             for g in sorted(changed):
                 n, sel = groups[g][:2]
                 members = groups[g][2] if len(groups[g]) > 2 else sel.members
-                new = shrunk(m, members, had[g], bans(m, group_bans(members)))
+                if per_target and not members:
+                    leftovers[n] |= sel.members
+                    del groups[g]
+                    continue
+                # --per-target: the model of the files of the target
+                own = target_model(m, next(iter(members))) if per_target else m
+                new = shrunk(own, members, had[g], bans(m, group_bans(members)))
                 kept = new.members if new.value > 0 else set()
                 leftovers[n] |= sel.members - kept
                 if kept:
@@ -2544,36 +2885,54 @@ def checks(args, base):
                     del groups[g]
             # the same targets and headers as checked: nothing to check again
             changed = set(g for g in changed if g in groups and checked.get(g) != signature(groups[g][1]))
+            clean.update(signature(groups[g][1]) for g in found if g in groups and g not in changed)
             for n, targets in sorted(leftovers.items()):
                 parts = collections.defaultdict(list)
                 for target in sorted(targets - no_pch):
                     parts[(frozenset(target_bans[target]), frozenset(moved_for[target]))].append(target)
                 for (hs, _), part in sorted(parts.items(), key=lambda kv: kv[1][0]):
-                    if set(part) <= contrib:
+                    if per_target:
+                        sels = [sel for sel in (target_selection(m, t, bans(m, hs)) for t in part) if sel]
+                    elif set(part) <= contrib:
                         sels = [sel for sel in [form_group(m, part, bans(m, hs))] if sel.value > 0]
                     else:
                         sels = groups_of_class(m, part, bans(m, hs))
                     for sel in sels:
+                        sig = signature(sel)
+                        if sig in failed:
+                            no_pch |= sel.members
+                            no_pch_why["the same group failed"] += len(sel.members)
+                            counts["made again as failed"] += 1
+                            continue
                         g = next_id[0]
                         next_id[0] += 1
                         groups[g] = (n, sel)
-                        changed.add(g)
+                        if sig in clean:
+                            checked[g] = sig
+                            counts["made again as passed"] += 1
+                        else:
+                            changed.add(g)
             totals.update(counts)
-            files_text = "files checked %d of %d (passed before %d), failing %d: on headers %d, via macros %d, " \
-                         "unattributed %d; targets whose link lacks a library %d of %d" % (
-                             files["checked"], files["total"], files["passed before"], files["failing"],
-                             files["on headers"], files["via macros"], files["unattributed"],
+            files_text = "files checked %d of %d (passed before %d, as checked before %d), failing %d: " \
+                         "on headers %d, via macros %d, via names %d, unattributed %d; targets whose link lacks a library %d of %d" % (
+                             files["checked"], files["total"], files["passed before"], files["from the cache"],
+                             files["failing"],
+                             files["on headers"], files["via macros"], files["via names"], files["unattributed"],
                              files["links lacking"], files["links"])
             print("%-18s%s" % ("checks:" if rounds == 1 else "", "round %d: %d groups; %s; %s" % (
                 rounds, len(found), files_text, ", ".join("%s %d" % (k, counts[k]) for k in (
                     "compile errors", "targets failing", "failing: headers dropped", "failing: targets moved",
                     "-D", "-D: headers dropped", "-D: targets moved", "static init (kept)", "failed",
-                    "not reached", "reached, not in PCH", "includes learned")))))
+                    "not reached", "reached, not in PCH", "includes learned", "made again as failed",
+                    "made again as passed")))))
+            for k, v in examples.items():
+                print("  e.g. %s: %s" % (k, v))
+            for kind, k in fail_kinds.most_common(_TOP_FAILURES):
+                print("  failed %d: %s" % (k, kind))
+            sys.stdout.flush()
             pending = changed
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    for k, v in examples.items():
-        print("  e.g. %s: %s" % (k, v))
     for g in pending:
         del groups[g]
     base["found"] = [groups[g] for g in sorted(groups)]
@@ -2581,7 +2940,14 @@ def checks(args, base):
           "targets moved %d, with no PCH %d, with static init %d" % (
               len(groups), rounds, len(pending), len(set().union(*target_bans.values()) - contrib_bans) if target_bans else 0,
               len(moved), len(no_pch), len(inits)))
+    for why, k in no_pch_why.most_common(_TOP_FAILURES):
+        print("  with no PCH %d: %s" % (k, why))
     report_groups(base, "checked groups")
+    have = set().union(*(v[1].members for v in groups.values()))
+    if len(have) < _MIN_KEPT * len(had):
+        print("  targets with a PCH %d of %d before the checks: fewer than %d%%, nothing is written" % (
+            len(have), len(had), _MIN_KEPT * 100))
+        return False
     return not pending
 
 # =============================================================================
@@ -2589,9 +2955,10 @@ def checks(args, base):
 # =============================================================================
 
 _MIN_GROUP_G = 60 * 10**6       # us of G: a group saving less has no PCH
-_GROUPS_GNI = os.path.join(_PCH_DIR, "groups.gni")
+_GROUPS_GNI = os.path.join(_GLOBAL_DIR, "groups.gni")
 _CONTRIB = "contrib"            # the name of the group of the targets without //util
-_TARGETS_GNI = os.path.join(_PCH_DIR, "targets.gni")
+_TARGETS_GNI = os.path.join(_PER_TARGET_DIR, "targets.gni")
+_ENUM_EXCLUDE_GNI = os.path.join(_GLOBAL_DIR, "enum_serialization.gni")
 _WRITTEN = "written by build/gn/scripts/pch_update.py"
 _GNI_NAME_RE = re.compile(r'^\s*name = "([^"]*)"\s*$')
 _GNI_LIST_RE = re.compile(r"^\s*(\w+) = \[(.*?)(\]?)\s*$")
@@ -2737,7 +3104,7 @@ def gn_dir(base, d):
 
 
 def write(args, base):
-    """Writes //build/gn/pch: groups.gni, a <name>/pch.h and pch.cc per group;
+    """Writes //build/gn/pch/global: groups.gni, a <name>/pch.h and pch.cc per group;
     removes the dirs of the groups gone."""
     m, found = base["model"], base["found"]
     names, objs = base["header_names"], base["objs"]
@@ -2816,7 +3183,7 @@ def write(args, base):
             numbered[i] = name = str(k)
             taken.add(name)
 
-    pch_dir = os.path.join(_ROOT, _PCH_DIR)
+    pch_dir = os.path.join(_ROOT, _GLOBAL_DIR)
     text = ["# %s\n" % _WRITTEN, "pch_groups = [\n"]
     patterns = 0
     base["written"], base["written_inputs"] = {}, {}
@@ -2843,16 +3210,78 @@ def write(args, base):
               len(written), len(found), duration(_MIN_GROUP_G), sum(len(w[2]) for w in written), patterns,
               len(set(t for w in written for t in w[4])), out_for_cycles))
 
-    # the dirs of no group: but those of the PCH of pch_targets
-    own = set(label[2:].split("/")[0] for _, labels in gni_lists(os.path.join(_ROOT, _TARGETS_GNI), "pch_targets")
-              for label in labels)
+    # the dirs of no group
     gone = sorted(d for d in os.listdir(pch_dir) if os.path.isdir(os.path.join(pch_dir, d))
-                  and d not in base["written"] and d not in own)
+                  and d not in base["written"])
     for d in gone:
         shutil.rmtree(os.path.join(pch_dir, d))
     print("cleanup:          removed %d dirs%s" % (len(gone), (": " + ", ".join(gone)) if gone else ""))
     for what, examples in sorted(problems.items()):
         print("  %d %s, e.g. %s" % (len(examples), what, display(examples[0])))
+    return not problems
+
+
+_PCH_TARGETS_RE = re.compile(r"^pch_targets = \[.*?\]\n", re.M | re.S)   # labels have no ]
+
+
+def target_header(label):
+    """The PCH of a target of pch_targets: //build/gn/pch/per_target/<dir>/<name>.h."""
+    d, _, name = label[2:].partition(":")
+    return os.path.join(_PER_TARGET_DIR, d, name + ".h")
+
+
+def write_per_target(args, base):
+    """--per-target: writes pch_targets of //build/gn/pch/per_target/targets.gni and the
+    PCH of each, <dir>/<name>.h; removes the PCH of the targets gone. The
+    data of pch_mode = "global" stays."""
+    names = base["header_names"]
+    written, problems = {}, collections.defaultdict(list)
+    for n, sel in [g[:2] for g in base["found"]]:
+        if sel.value < _MIN_TARGET_G:
+            continue
+        target = next(iter(sel.members))
+        _, roots, _, _ = group_inputs(base, sel)
+        if not roots:
+            problems["targets with no header"].append(target)
+            continue
+        written[target] = roots
+    before = set(t for _, ts in gni_lists(os.path.join(_ROOT, _TARGETS_GNI), "pch_targets") for t in ts)
+
+    path = os.path.join(_ROOT, _TARGETS_GNI)
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    listed = gn_list("pch_targets", sorted(written), 0)
+    if _PCH_TARGETS_RE.search(text):
+        text = _PCH_TARGETS_RE.sub(lambda _: listed, text, count=1)
+    else:
+        text = listed + "\n" + text
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    for target, roots in sorted(written.items()):
+        header = os.path.join(_ROOT, target_header(target))
+        os.makedirs(os.path.dirname(header), exist_ok=True)
+        with open(header, "w", encoding="utf-8") as f:
+            f.write("// %s\n#pragma once\n\n" % _WRITTEN)
+            for h in roots:
+                f.write("#include %s\n" % spelling(base, names[h]))
+
+    # the PCH of the targets gone, and the dirs they leave empty
+    pch_dir = os.path.join(_ROOT, _PER_TARGET_DIR)
+    gone = sorted(before - set(written))
+    for target in gone:
+        header = os.path.join(_ROOT, target_header(target))
+        if os.path.exists(header):
+            os.remove(header)
+        d = os.path.dirname(header)
+        while d != pch_dir and os.path.isdir(d) and not os.listdir(d):
+            os.rmdir(d)
+            d = os.path.dirname(d)
+    base["written"] = dict((t, set([t])) for t in written)
+    print("write:            pch_targets %d of %d (G %s+), headers included %d; before %d: kept %d, new %d, removed %d" % (
+        len(written), len(base["found"]), duration(_MIN_TARGET_G), sum(len(r) for r in written.values()),
+        len(before), len(before & set(written)), len(set(written) - before), len(gone)))
+    for what, examples in sorted(problems.items()):
+        print("  %d %s, e.g. %s" % (len(examples), what, examples[0]))
     return not problems
 
 
@@ -2863,7 +3292,14 @@ def write(args, base):
 _PCH_MODE_RE = re.compile(r"^\s*pch_mode\s*=")
 _OUTPUT_RE = re.compile(r"\s-o\s+(\S+)")
 _INCLUDE_PCH_RE = re.compile(r"-include-pch\s+\S*/pch_([^/\s]+)\.pch")
-_PCH_SOURCE_RE = re.compile(r"(?:^|/)%s/([^/]+)/pch\.cc$" % re.escape(_PCH_DIR))
+_PCH_SOURCE_RE = re.compile(r"(?:^|/)%s/([^/]+)/pch\.cc$" % re.escape(_GLOBAL_DIR))
+# --per-target: the PCH a target compiles, obj/build/gn/pch/per_target/<dir>/<output
+# name>.<name>.h.h-cc.gch of //build/gn/pch/per_target/<dir>/<name>.h, a file includes
+# as .../<name>.h.h-cc
+_TARGET_PCH_BUILD_RE = re.compile(r"^build obj/%s/(\S+)/[^/\s]*\.([^./\s]+)\.h\.h-cc\.gch: " % re.escape(_PER_TARGET_DIR),
+                                  re.M)
+_TARGET_PCH_INCLUDE_RE = re.compile(r"-include\s+\S*?obj/%s/(\S+)/[^/\s]*\.([^./\s]+)\.h\.h-cc(?:\s|$)"
+                                    % re.escape(_PER_TARGET_DIR))
 _PCH_ONLY = ("-x c++-header", "-fpch-instantiate-templates")
 _TOP_GN_ERROR = 10
 
@@ -2871,7 +3307,11 @@ _TOP_GN_ERROR = 10
 def gn_gen(args, base):
     """gn gen of this tree with the args of --baseline but pch_mode =
     "global" in a temporary dir: each C++ file of the baseline has the PCH of
-    the group written for its target, each PCH the flags of its files."""
+    the group written for its target, each PCH the flags of its files.
+    --per-target: pch_mode = "per_target", each C++ file has the PCH of its
+    target if one was written for it, each such target compiles its PCH."""
+    per_target = base.get("per_target")
+    mode = "per_target" if per_target else "global"
     build_dir = base["build_dir"]
     with open(os.path.join(build_dir, "build.ninja"), encoding="utf-8") as f:
         m = re.search(r"^rule gn\n\s*command = (.*)$", f.read(), re.M)
@@ -2883,7 +3323,7 @@ def gn_gen(args, base):
         with open(os.path.join(build_dir, "args.gn"), encoding="utf-8") as f:
             lines = [line for line in f if not _PCH_MODE_RE.match(line)]
         with open(os.path.join(out, "args.gn"), "w", encoding="utf-8") as f:
-            f.write("".join(lines) + 'pch_mode = "global"\n')
+            f.write("".join(lines) + 'pch_mode = "%s"\n' % mode)
         start = time.time()
         r = subprocess.run([gn, "--root=" + _ROOT, "-q"] + extra + ["gen", out], stdout=subprocess.PIPE,
                            stderr=subprocess.STDOUT, universal_newlines=True, errors="replace")
@@ -2895,6 +3335,14 @@ def gn_gen(args, base):
             return False
         with open(os.path.join(out, "compile_commands.json"), encoding="utf-8") as f:
             commands = json.load(f)
+        # --per-target: compile_commands.json has no compile of a PCH, the manifest has
+        compiled = set()
+        if per_target:
+            for d, _, fs in os.walk(out):
+                for name in fs:
+                    if name.endswith(".ninja"):
+                        with open(os.path.join(d, name), encoding="utf-8", errors="replace") as f:
+                            compiled.update("//%s:%s" % m.groups() for m in _TARGET_PCH_BUILD_RE.finditer(f.read()))
     finally:
         shutil.rmtree(out, ignore_errors=True)
 
@@ -2911,6 +3359,8 @@ def gn_gen(args, base):
     target_of, compiler = base["target_of"], base["compiler"]
     pch_flags, files = {}, {}                   # group -> (flags, -D); obj -> (pch, flags, -D)
     inputs_bad = {}                             # group -> what of groups.gni its PCH lacks
+    if per_target:
+        return target_pch_as_written(base, commands, compiled, took)
     for c in commands:
         command = c["command"]
         if compiler not in command:
@@ -2969,6 +3419,205 @@ def gn_gen(args, base):
     return not wrong and not flags_bad and not inputs_bad and set(pch_flags) >= set(base["written"])
 
 
+def target_pch_as_written(base, commands, compiled, took):
+    """--per-target, of gn_gen(): the files with the PCH of their target as
+    written, the targets of `compiled` compiling theirs."""
+    target_of, compiler = base["target_of"], base["compiler"]
+    files = {}                                  # obj -> target of its PCH
+    for c in commands:
+        command = c["command"]
+        if compiler not in command:
+            continue
+        o = _OUTPUT_RE.search(command)
+        if o and o.group(1) in target_of:
+            p = _TARGET_PCH_INCLUDE_RE.search(command)
+            files[o.group(1)] = "//%s:%s" % p.groups() if p else None
+    written = base["written"]
+    wrong = collections.defaultdict(list)       # target -> (file, predicted, got)
+    no_hook, elsewhere = set(), set()
+    for obj, target in target_of.items():
+        if obj not in files:
+            elsewhere.add(target)               # another toolchain
+            continue
+        want = target if target in written else None
+        if files[obj] is None and want is not None:
+            no_hook.add(target)                 # its template takes no PCH (static_library ...)
+        elif files[obj] != want:
+            wrong[target].append((obj, want, files[obj]))
+    targets = set(target_of.values())
+    print("gn gen:           ok in %s; PCH as predicted %d of %d targets (no PCH by template %d, "
+          "other toolchains %d); PCH compiled %d of %d targets written" % (
+              duration(took), len(targets) - len(wrong) - len(no_hook - set(wrong)), len(targets),
+              len(no_hook - set(wrong)), len(elsewhere - set(wrong) - no_hook),
+              len(compiled & set(written)), len(written)))
+    for target, bad in sorted(wrong.items())[:_TOP_GN_ERROR]:
+        obj, want, got = bad[0]
+        print("  %s: %s has PCH %s, predicted %s" % (target, display(obj), got, want))
+    for target in sorted(no_hook)[:_TOP_GN_ERROR]:
+        print("  %s: no PCH, its template takes none" % target)
+    for target in sorted(set(written) - compiled)[:_TOP_GN_ERROR]:
+        print("  %s: no compile of its PCH" % target)
+    return not wrong and not no_hook and set(written) <= compiled
+
+
+# =============================================================================
+# the state between runs
+# =============================================================================
+
+_STATE_VERSION = 2              # of what the steps leave in `base`: older states are not taken
+_KEEP_LOGS = 10
+
+
+class _Tee(object):
+    """stdout or stderr also written to the log; stdout kept for the report of a step."""
+
+    def __init__(self, stream, log_file, keep):
+        self.stream, self.log_file, self.keep = stream, log_file, keep
+        self.kept = []
+
+    def write(self, text):
+        self.stream.write(text)
+        self.log_file.write(text)
+        if self.keep:
+            self.kept.append(text)
+
+    def flush(self):
+        self.stream.flush()
+        self.log_file.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+    def take(self):
+        text, self.kept = "".join(self.kept), []
+        return text
+
+
+def start_log(args):
+    """All the output also into <cache dir>/logs/<time>.log, the older logs but a few removed."""
+    d = os.path.join(args.cache_dir, "logs")
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, time.strftime("%Y%m%d-%H%M%S.log"))
+    f = open(path, "a", buffering=1, errors="replace")
+    sys.stdout = _Tee(sys.stdout, f, True)
+    sys.stderr = _Tee(sys.stderr, f, False)
+    for old in sorted(os.listdir(d))[:-_KEEP_LOGS]:
+        os.remove(os.path.join(d, old))
+    log("log: %s" % path)
+
+
+def git_out(*argv):
+    return subprocess.run(["git", "-C", _ROOT] + list(argv), stdout=subprocess.PIPE, check=True).stdout
+
+
+def state_key(args, base):
+    """What the steps depend on: the baseline (its .ninja_log and manifest),
+    HEAD with the changes of the tree but this script and ya.make (gn reads
+    none), the main, the options."""
+    build_dir = base["build_dir"]
+    stats = [os.stat(os.path.join(build_dir, f)) for f in (".ninja_log", "build.ninja")]
+    diff = git_out("diff", "HEAD", "--binary", "--", ".", ":(exclude)" + os.path.relpath(
+        os.path.dirname(os.path.abspath(__file__)), _ROOT), ":(exclude,glob)**/ya.make")
+    data = (_STATE_VERSION, build_dir, [(st.st_size, st.st_mtime_ns) for st in stats],
+            git_out("rev-parse", "HEAD").strip(), hashlib.sha1(diff).hexdigest(),
+            git_out("merge-base", "HEAD", args.main_ref).strip(), tuple(args.targets), args.max_missing_traces)
+    return hashlib.sha1(repr(data).encode("utf-8")).hexdigest()[:16]
+
+
+def state_path(args, base, name):
+    """<cache dir>/<name>-<baseline>-<state key>.pickle; None with no key."""
+    if not base.get("state_key"):
+        return None
+    d = hashlib.sha1(base["build_dir"].encode("utf-8")).hexdigest()[:8]
+    return os.path.join(args.cache_dir, "%s-%s-%s.pickle" % (name, d, base["state_key"]))
+
+
+def load_pickle(path):
+    try:
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    except (OSError, EOFError, pickle.UnpicklingError, ValueError, AttributeError, ImportError):
+        return None
+
+
+def save_pickle(path, data):
+    """Written whole or not at all; the files of the same name for other
+    states of the baseline removed."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as f:
+        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    os.replace(tmp, path)
+    prefix = os.path.basename(path).rsplit("-", 1)[0] + "-"
+    for other in os.listdir(os.path.dirname(path)):
+        if other.startswith(prefix) and other != os.path.basename(path):
+            os.remove(os.path.join(os.path.dirname(path), other))
+
+
+def copy_pch_dir(args, base):
+    """A copy of //build/gn/pch, put back if writing it or gn gen fails."""
+    d = base["pch_copy"] = tempfile.mkdtemp(prefix="pch_update.pch.")
+    shutil.copytree(os.path.join(_ROOT, _PCH_DIR), os.path.join(d, "pch"), symlinks=True)
+    return True
+
+
+def put_back_pch_dir(base, ok):
+    """//build/gn/pch as copy_pch_dir() found it unless `ok`; the copy removed."""
+    d = base.pop("pch_copy", None)
+    if d is None:
+        return
+    if not ok:
+        shutil.rmtree(os.path.join(_ROOT, _PCH_DIR))
+        shutil.copytree(os.path.join(d, "pch"), os.path.join(_ROOT, _PCH_DIR), symlinks=True)
+        print("%-18s%s put back as it was before the write" % ("", _PCH_DIR))
+    shutil.rmtree(d, ignore_errors=True)
+
+
+def run_steps(args, base, steps):
+    """The steps from after the last one saved for this state; each saved
+    after it, with its report (stdout) printed again when taken."""
+    names = [name for name, _, _ in steps]
+    start = 0
+    if not args.fresh:
+        for i in reversed(range(len(steps))):
+            path = state_path(args, base, "after-" + names[i])
+            saved = load_pickle(path) if path and steps[i][2] else None
+            if saved is not None:
+                key = base["state_key"]
+                base.clear()
+                base.update(saved)
+                base["state_key"] = key
+                log("steps %s: as saved in %s" % (", ".join(names[:i + 1]), path))
+                for text in base.get("reports", []):
+                    sys.stdout.write(text)
+                start = i + 1
+                break
+    for name, step, keep in steps[start:]:
+        took = time.time()
+        if not step(args, base):
+            return False
+        log("%s: %d min" % (name, (time.time() - took) / 60))
+        if hasattr(sys.stdout, "take"):
+            base.setdefault("reports", []).append(sys.stdout.take())
+        path = state_path(args, base, "after-" + name)
+        if keep and path:
+            cache = base.pop("check_cache", None)
+            took = time.time()
+            save_pickle(path, base)
+            if cache is not None:
+                base["check_cache"] = cache
+            log("%s: saved in %s, %d s" % (name, path, time.time() - took))
+            # the states of the steps before it, of the same options, are of no use now
+            for earlier in names[:names.index(name)]:
+                p = state_path(args, base, "after-" + earlier)
+                if p and os.path.exists(p) and (name.endswith(_PER_TARGET_STEP) == earlier.endswith(_PER_TARGET_STEP)):
+                    os.remove(p)
+    return True
+
+
+_PER_TARGET_STEP = "-per-target"
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--baseline", required=True, help="build dir with pch_mode = \"none\", time_trace = true")
@@ -2980,15 +3629,30 @@ def main():
     ap.add_argument("--check-jobs", type=int, default=min(24, multiprocessing.cpu_count()),
                     help="compilers checking the PCH")
     ap.add_argument("--main-ref", default="origin/main", help="main, for the merge base of HEAD")
+    ap.add_argument("--per-target", action="store_true",
+                    help="a PCH of its own for each target gaining from one, for pch_mode = \"per_target\"")
     ap.add_argument("--cache-dir", default=os.path.join(os.environ.get("XDG_CACHE_HOME") or
                                                         os.path.expanduser("~/.cache"), "pch_update"),
-                    help="results of earlier runs (the headers compiled alone)")
+                    help="results of earlier runs: the steps done, the checks, the headers compiled alone; the logs")
+    ap.add_argument("--fresh", action="store_true", help="all the steps again, none taken as saved")
     args = ap.parse_args()
+    start_log(args)
     ok, base = check(args)
     if ok:
-        ok = traces(args, base) and history(args, base) and flag_classes(args, base) \
-            and header_facts(args, base) and groups(args, base) \
-            and checks(args, base) and write(args, base) and gn_gen(args, base)
+        base["state_key"] = state_key(args, base)
+        sys.stdout.take()                       # of this run: not a report of the steps
+        mode = _PER_TARGET_STEP if args.per_target else ""
+        ok = False
+        try:
+            ok = run_steps(args, base, [
+                ("traces", traces, True), ("history", history, True), ("flag_classes", flag_classes, True),
+                ("header_facts", header_facts, True),
+                ("groups" + mode, per_target_groups if args.per_target else groups, True),
+                ("checks" + mode, checks, False), ("copy_pch_dir", copy_pch_dir, False),
+                ("write" + mode, write_per_target if args.per_target else write, False),
+                ("gn_gen" + mode, gn_gen, False)])
+        finally:
+            put_back_pch_dir(base, ok)
     print("OK" if ok else "FAILED")
     sys.exit(0 if ok else 1)
 

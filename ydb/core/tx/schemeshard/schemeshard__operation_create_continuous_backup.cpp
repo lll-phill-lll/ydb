@@ -30,7 +30,7 @@ TVector<ISubOperation::TPtr> CreateNewContinuousBackup(TOperationId opId, const 
     if (cbOp.GetContinuousBackupDescription().HasStreamName()) {
         streamName = cbOp.GetContinuousBackupDescription().GetStreamName();
     } else {
-        streamName = NBackup::ToX509String(TlsActivationContext->AsActorContext().Now()) + "_continuousBackupImpl";
+        streamName = NBackupCollection::ToX509String(TlsActivationContext->AsActorContext().Now()) + "_continuousBackupImpl";
     }
 
     const auto checksResult = NCdc::DoNewStreamPathChecks(context, opId, workingDirPath, tableName, streamName, acceptExisted);

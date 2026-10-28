@@ -1,0 +1,30 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <expected>
+#include <thread>
+#include "library/cpp/cgiparam/cgiparam.h"
+#include "library/cpp/containers/intrusive_rb_tree/rb_tree.h"
+#include "library/cpp/http/fetch/httpheader.h"
+#include "library/cpp/http/server/conn.h"
+#include "library/cpp/json/writer/json_value.h"
+#include "library/cpp/logger/all.h"
+#include "library/cpp/lwtrace/control.h"
+#include "library/cpp/monlib/metrics/metric.h"
+#include "library/cpp/monlib/service/pages/templates.h"
+#include "util/folder/path.h"
+#include "util/generic/queue.h"
+#include "util/thread/pool.h"
+#include "ydb/library/actors/core/actor_bootstrapped.h"
+#include "ydb/library/actors/core/actorsystem.h"
+#include "ydb/library/actors/core/allocation_cache_families.h"
+#include "ydb/library/actors/core/hfunc.h"
+#include "ydb/library/actors/core/interconnect.h"
+#include "ydb/library/actors/interconnect/event_filter.h"
+#include "ydb/library/actors/interconnect/poller/poller_actor.h"
+#include "ydb/library/actors/memory_log/memlog.h"
+#include "ydb/library/actors/queues/mpmc_ring_queue.h"
+#include "ydb/library/actors/retro_tracing/span/retro_span.h"
+#include "ydb/library/actors/struct_log/json_writer.h"
+#include "ydb/library/actors/struct_log/log_stack.h"
+#include "ydb/library/actors/protos/services_common.pb.h"

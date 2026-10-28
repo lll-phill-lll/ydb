@@ -1,0 +1,20 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "library/cpp/lwtrace/shuttle.h"
+#include "ydb/core/grpc_services/cancelation/cancelation_event.h"
+#include "ydb/core/kqp/common/simple/query_id.h"
+#include "ydb/core/kqp/common/simple/query_ref.h"
+#include "ydb/core/kqp/opt/cbo/cbo_interesting_orderings.h"
+#include "ydb/core/kqp/provider/yql_kikimr_provider.h"
+#include "ydb/core/kqp/topics/kqp_topics.h"
+#include "ydb/core/tx/tx_proxy/mon.h"
+#include "ydb/core/ydb_convert/table_profiles.h"
+#include "ydb/core/ydb_convert/ydb_convert.h"
+#include "yql/essentials/core/yql_statistics.h"
+#include "yql/essentials/providers/common/config/yql_dispatch.h"
+#include "ydb/core/protos/data_events.pb.h"
+#include "ydb/core/protos/tx_datashard.pb.h"
+#include "ydb/core/protos/tx_proxy.pb.h"
+#include "ydb/library/yql/dq/actors/protos/dq_stats.pb.h"
+#include "ydb/library/yql/dq/actors/protos/dq_status_codes.pb.h"

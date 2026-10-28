@@ -141,9 +141,18 @@ config("time_trace") {
     ]
 }
 
+# pch_mode = "per_target": as //build/gn/pch/global builds the shared ones --
+# reproducible, relocatable against the source root -- for the precompiled
+# header of a target and its files (the cc1 spelling: unused by a file)
 config("pch") {
     cflags_cc = [
         "-fpch-instantiate-templates",
+        "-Xclang",
+        "-relocatable-pch",
+        "-Xclang",
+        "-fno-pch-timestamp",
+        "-isysroot",
+        string_replace(string_replace(rebase_path("//.") + "/", "/./", "/"), "//", "/"),
     ]
 }
 

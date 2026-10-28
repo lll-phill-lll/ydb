@@ -1,0 +1,21 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "ydb/core/base/channel_profiles.h"
+#include "ydb/core/base/event_filter.h"
+#include "ydb/core/base/feature_flags.h"
+#include "ydb/core/base/tablet_pipe.h"
+#include "ydb/core/base/tx_processing.h"
+#include "ydb/core/tablet_flat/flat_cxx_database.h"
+#include "ydb/core/tablet_flat/tablet_flat_executed.h"
+#include "ydb/core/tx/mediator/defs.h"
+#include "ydb/core/tx/time_cast/time_cast.h"
+#include "ydb/library/actors/core/interconnect.h"
+#include "ydb/library/pdisk_io/buffer_pool.h"
+#include "ydb/library/pdisk_io/sector_map.h"
+#include "ydb/core/protos/bridge.pb.h"
+#include "ydb/core/protos/statestorage.pb.h"
+#include "ydb/core/protos/tx.pb.h"
+#include "ydb/core/scheme/protos/key_range.pb.h"
+#include "ydb/library/aclib/protos/acl/acl.pb.h"
+#include "ydb/library/aclib/protos/identity/user_token.pb.h"

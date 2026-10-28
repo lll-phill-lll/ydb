@@ -1,0 +1,27 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <condition_variable>
+#include "contrib/libs/apache/arrow/cpp/src/arrow/api.h"
+#include "contrib/libs/grpc/include/grpcpp/support/async_stream.h"
+#include "contrib/libs/grpc/include/grpcpp/support/async_unary_call.h"
+#include "util/system/filemap.h"
+#include "ydb/library/actors/util/rc_buf_backend.h"
+#include "ydb/library/actors/util/rope_cont_embedded_list.h"
+#include "ydb/library/actors/wilson/wilson_trace.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/result/result.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/types/credentials/credentials.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/library/issue/yql_issue.h"
+#include "ydb/public/sdk/cpp/src/library/grpc/client/grpc_common.h"
+#include "yql/essentials/core/dq_integration/yql_dq_integration.h"
+#include "yql/essentials/core/yql_expr_type_annotation.h"
+#include "yql/essentials/core/yql_opt_utils.h"
+#include "yql/essentials/minikql/comp_nodes/mkql_factories.h"
+#include "yql/essentials/providers/common/config/yql_dispatch.h"
+#include "yql/essentials/providers/common/mkql/yql_provider_mkql.h"
+#include "yql/essentials/providers/common/provider/yql_data_provider_impl.h"
+#include "yql/essentials/providers/common/transform/yql_visit.h"
+#include "yql/essentials/providers/result/expr_nodes/yql_res_expr_nodes.h"
+#include "ydb/library/yql/dq/actors/protos/dq_status_codes.pb.h"
+#include "ydb/library/yql/providers/generic/connector/api/service/protos/connector.pb.h"
+#include "ydb/public/api/protos/draft/fq.pb.h"

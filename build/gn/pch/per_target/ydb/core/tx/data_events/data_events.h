@@ -1,0 +1,21 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "library/cpp/lwtrace/control.h"
+#include "ydb/core/formats/arrow/accessor/composite_serial/accessor.h"
+#include "ydb/core/formats/factory.h"
+#include "ydb/core/tx/columnshard/counters/sub_columns.h"
+#include "ydb/core/tx/columnshard/engines/portions/portion_info.h"
+#include "ydb/core/tx/columnshard/engines/scheme/tiering/tier_info.h"
+#include "ydb/core/tx/columnshard/engines/scheme/versions/snapshot_scheme.h"
+#include "ydb/core/tx/columnshard/engines/writer/blob_constructor.h"
+#include "ydb/core/tx/columnshard/tx_reader/abstract.h"
+#include "ydb/core/tx/data_events/common/signals_flow.h"
+#include "ydb/core/tx/long_tx_service/public/events.h"
+#include "ydb/core/tx/scheme_cache/scheme_cache.h"
+#include "ydb/core/tx/sharding/sharding.h"
+#include "ydb/library/signals/object_counter.h"
+#include "ydb/core/protos/counters_columnshard.pb.h"
+#include "ydb/core/protos/table_stats.pb.h"
+#include "ydb/core/protos/tx_datashard.pb.h"
+#include "ydb/public/api/protos/ydb_issue_message.pb.h"

@@ -1,0 +1,7 @@
+# targets whose enum serialization (serialize_enum_headers) defines Out<> ... of
+# an enum the precompiled header of their group (//build/gn/pch/global/groups.gni)
+# instantiates: their <target>_enum_objs are compiled without it
+enum_serialization_pch_exclude = [
+  "//ydb/core/base:base",
+  "//ydb/library/actors/core:core",
+]

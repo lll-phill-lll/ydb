@@ -1,0 +1,21 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "ydb/core/cms/console/console.h"
+#include "ydb/core/engine/mkql_engine_flat.h"
+#include "ydb/core/persqueue/pq.h"
+#include "ydb/core/persqueue/pqtablet/partition/subscriber.h"
+#include "ydb/core/persqueue/public/describer/describer.h"
+#include "ydb/core/testlib/fake_coordinator.h"
+#include "ydb/core/testlib/minikql_compile.h"
+#include "ydb/core/tx/schemeshard/index/build_index.h"
+#include "ydb/core/tx/schemeshard/schemeshard_backup.h"
+#include "ydb/core/tx/schemeshard/schemeshard_export.h"
+#include "ydb/core/tx/schemeshard/schemeshard_forced_compaction.h"
+#include "ydb/core/tx/schemeshard/schemeshard_import.h"
+#include "ydb/core/tx/schemeshard/schemeshard_types.h"
+#include "ydb/public/sdk/cpp/src/client/persqueue_public/ut/ut_utils/ut_utils.h"
+#include "ydb/public/sdk/cpp/src/client/topic/ut/ut_utils/txusage_fixture.h"
+#include "ydb/core/protos/grpc_pq_old.pb.h"
+#include "ydb/core/protos/tx_datashard.pb.h"
+#include "ydb/public/api/protos/draft/persqueue_common.pb.h"

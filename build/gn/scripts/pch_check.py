@@ -1,5 +1,5 @@
 """Checks a precompiled header shared by many targets (pch_mode = "global",
-//build/gn/pch) against the files that use it.
+//build/gn/pch/global) against the files that use it.
 
 gn compiles the PCH from --source (a stub including the header) with the
 default configs. Every C++ file whose command line (compile_commands.json) has

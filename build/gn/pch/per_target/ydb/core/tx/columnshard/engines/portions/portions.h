@@ -1,0 +1,23 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "contrib/libs/grpc/include/grpc++/server_context.h"
+#include "contrib/libs/grpc/include/grpcpp/grpcpp.h"
+#include "contrib/libs/grpc/include/grpcpp/support/async_stream.h"
+#include "contrib/libs/grpc/include/grpcpp/support/async_unary_call.h"
+#include "library/cpp/monlib/dynamic_counters/percentile/percentile.h"
+#include "ydb/core/formats/arrow/accessor/plain/accessor.h"
+#include "ydb/core/tx/columnshard/counters/sub_columns.h"
+#include "ydb/core/tx/columnshard/engines/portions/write_with_blobs.h"
+#include "ydb/core/tx/columnshard/engines/scheme/versions/filtered_scheme.h"
+#include "ydb/core/tx/columnshard/engines/writer/write_controller.h"
+#include "ydb/core/tx/tiering/tier/object.h"
+#include "ydb/library/grpc/server/logger.h"
+#include "ydb/services/metadata/manager/common.h"
+#include "ydb/services/metadata/manager/table_record.h"
+#include "ydb/services/metadata/request/common.h"
+#include "yql/essentials/public/issue/yql_issue_manager.h"
+#include "ydb/core/protos/labeled_counters.pb.h"
+#include "ydb/public/api/protos/ydb_cms.pb.h"
+#include "ydb/public/api/protos/ydb_discovery.pb.h"
+#include "ydb/public/api/protos/ydb_import.pb.h"

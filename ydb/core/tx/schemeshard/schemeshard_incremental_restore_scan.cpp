@@ -617,14 +617,14 @@ private:
                 relativeTablePaths.push_back(std::move(paths.second));
             }
 
-            TString fullBackupPath = JoinPath({bcPathString, NBackup::FullBackupDirName(op.GetFullBackupTrimmedName())});
+            TString fullBackupPath = JoinPath({bcPathString, NBackupCollection::FullBackupDirName(op.GetFullBackupTrimmedName())});
             for (const auto& relativeTablePath : relativeTablePaths) {
                 TString sourceTablePath = JoinPath({fullBackupPath, relativeTablePath});
                 finalize.AddBackupTablePaths(sourceTablePath);
             }
 
             for (const auto& incrBackupName : op.GetIncrementalBackupTrimmedNames()) {
-                TString incrBackupPath = JoinPath({bcPathString, NBackup::IncrementalBackupDirName(incrBackupName)});
+                TString incrBackupPath = JoinPath({bcPathString, NBackupCollection::IncrementalBackupDirName(incrBackupName)});
                 for (const auto& relativeTablePath : relativeTablePaths) {
                     TString sourceTablePath = JoinPath({incrBackupPath, relativeTablePath});
                     finalize.AddBackupTablePaths(sourceTablePath);
@@ -771,7 +771,7 @@ void TSchemeShard::EnqueueIncrementalRestoreOperations(
         }
 
         auto& relativeItemPath = paths.second;
-        TString incrBackupPathStr = JoinPath({bcPath.PathString(), NBackup::IncrementalBackupDirName(backupName), relativeItemPath});
+        TString incrBackupPathStr = JoinPath({bcPath.PathString(), NBackupCollection::IncrementalBackupDirName(backupName), relativeItemPath});
         const TPath& incrBackupPath = TPath::Resolve(incrBackupPathStr, this);
 
         if (!incrBackupPath.IsResolved()) {
@@ -1107,7 +1107,7 @@ void TSchemeShard::CreateSingleTableRestoreOperation(
     }
     auto& relativeItemPath = paths.second;
 
-    TString incrBackupPathStr = JoinPath({bcPath.PathString(), NBackup::IncrementalBackupDirName(backupName), relativeItemPath});
+    TString incrBackupPathStr = JoinPath({bcPath.PathString(), NBackupCollection::IncrementalBackupDirName(backupName), relativeItemPath});
     const TPath& incrBackupPath = TPath::Resolve(incrBackupPathStr, this);
 
     if (!incrBackupPath.IsResolved()) {
@@ -1251,7 +1251,7 @@ void TSchemeShard::EnqueueAndDiscoverIndexRestoreOperations(
 
     TString indexMetaBasePath = JoinPath({
         bcPath.PathString(),
-        NBackup::IncrementalBackupDirName(backupName),
+        NBackupCollection::IncrementalBackupDirName(backupName),
         "__ydb_backup_meta",
         "indexes"
     });
@@ -1360,7 +1360,7 @@ void TSchemeShard::CreateSingleIndexRestoreOperation(
 
     TString srcIndexBackupPath = JoinPath({
         bcPath.PathString(),
-        NBackup::IncrementalBackupDirName(backupName),
+        NBackupCollection::IncrementalBackupDirName(backupName),
         "__ydb_backup_meta",
         "indexes",
         relativeTablePath,

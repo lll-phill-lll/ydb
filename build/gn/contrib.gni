@@ -142,9 +142,15 @@ template("contrib_library") {
             not_needed([ "_pch_label" ])
             foreach(_group, pch_groups) {
                 if (label_matches(_pch_label, _group.targets)) {
-                    deps += [ "//build/gn/pch:pch_${_group.name}" ]
+                    deps += [ "//build/gn/pch/global:pch_${_group.name}" ]
                 }
             }
+        }
+        if (pch_mode == "per_target" && current_toolchain == default_toolchain &&
+            label_matches(get_label_info(":$target_name", "label_no_toolchain"), pch_targets)) {
+            precompiled_header = "pch.h"
+            precompiled_source = "//build/gn/pch/per_target/" + rebase_path(".", "//") + "/$target_name.h"
+            configs += [ "//build/gn/config:pch" ]
         }
     }
 }

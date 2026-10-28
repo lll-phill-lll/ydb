@@ -27,7 +27,7 @@ std::optional<THashMap<TString, THashSet<TString>>> GetRequiredPaths<TTag>(
     const TOperationContext& context)
 {
     const auto& restoreOp = tx.GetRestoreBackupCollection();
-    return NBackup::GetRestoreRequiredPaths(tx, restoreOp.GetName(), context);
+    return NBackupCollection::GetRestoreRequiredPaths(tx, restoreOp.GetName(), context);
 }
 
 } // namespace NOperation
@@ -237,10 +237,10 @@ public:
         TVector<TString> incrBackupNames;
 
         for (auto& [child, _] : bcPath.Base()->GetChildren()) {
-            if (child.EndsWith(NBackup::FullBackupSuffix)) {
+            if (child.EndsWith(NBackupCollection::FullBackupSuffix)) {
                 lastFullBackupName = child;
                 incrBackupNames.clear();
-            } else if (child.EndsWith(NBackup::IncrementalBackupSuffix)) {
+            } else if (child.EndsWith(NBackupCollection::IncrementalBackupSuffix)) {
                 incrBackupNames.push_back(child);
             }
         }
@@ -272,13 +272,13 @@ public:
         }
 
         TStringBuf fullBackupName = lastFullBackupName;
-        fullBackupName.ChopSuffix(NBackup::FullBackupSuffix);
+        fullBackupName.ChopSuffix(NBackupCollection::FullBackupSuffix);
 
         op.SetFullBackupTrimmedName(TString(fullBackupName));
 
         for (const auto& backupName : incrBackupNames) {
             TStringBuf incrBackupName = backupName;
-            incrBackupName.ChopSuffix(NBackup::IncrementalBackupSuffix);
+            incrBackupName.ChopSuffix(NBackupCollection::IncrementalBackupSuffix);
 
             op.AddIncrementalBackupTrimmedNames(TString(incrBackupName));
         }
@@ -383,10 +383,10 @@ TVector<ISubOperation::TPtr> CreateRestoreBackupCollection(TOperationId opId, co
             "Assume path children list is lexicographically sorted");
 
         for (auto& [child, _] : bcPath.Base()->GetChildren()) {
-            if (child.EndsWith(NBackup::FullBackupSuffix)) {
+            if (child.EndsWith(NBackupCollection::FullBackupSuffix)) {
                 lastFullBackupName = child;
                 incrBackupNames.clear();
-            } else if (child.EndsWith(NBackup::IncrementalBackupSuffix)) {
+            } else if (child.EndsWith(NBackupCollection::IncrementalBackupSuffix)) {
                 incrBackupNames.push_back(child);
             }
         }

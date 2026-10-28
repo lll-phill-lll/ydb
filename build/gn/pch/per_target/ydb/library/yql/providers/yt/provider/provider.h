@@ -1,0 +1,23 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "contrib/libs/apache/arrow/cpp/src/arrow/datum.h"
+#include "contrib/libs/protobuf/src/google/protobuf/util/message_differencer.h"
+#include "util/system/tls.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/types/credentials/credentials.h"
+#include "yql/essentials/core/dq_integration/yql_dq_integration.h"
+#include "yql/essentials/core/yql_expr_optimize.h"
+#include "yql/essentials/core/yql_opt_utils.h"
+#include "yql/essentials/minikql/aligned_page_pool.h"
+#include "yql/essentials/minikql/mkql_mem_info.h"
+#include "yql/essentials/parser/pg_wrapper/interface/context.h"
+#include "yql/essentials/providers/common/transform/yql_visit.h"
+#include "yt/yt/client/chaos_client/public.h"
+#include "yt/yt/client/table_client/row_base.h"
+#include "yt/yt/client/table_client/schema.h"
+#include "yt/yt/core/logging/public.h"
+#include "yt/yt/core/rpc/channel.h"
+#include "yt/yt/core/rpc/helpers.h"
+#include "yt/yt/core/yson/pull_parser_deserialize.h"
+#include "yt/yt/core/ytree/attribute_consumer.h"
+#include "yt/yt_proto/yt/core/ytree/proto/ypath.pb.h"

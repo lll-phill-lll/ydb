@@ -21,13 +21,13 @@ std::optional<THashMap<TString, THashSet<TString>>> GetRequiredPaths<TTag>(
     const TOperationContext& context)
 {
     const auto& backupOp = tx.GetBackupIncrementalBackupCollection();
-    return NBackup::GetBackupRequiredPaths(tx, backupOp.GetTargetDir(), backupOp.GetName(), context);
+    return NBackupCollection::GetBackupRequiredPaths(tx, backupOp.GetTargetDir(), backupOp.GetName(), context);
 }
 
 template <>
 bool Rewrite(TTag, TTxTransaction& tx) {
-    auto now = NBackup::ToX509String(TlsActivationContext->AsActorContext().Now());
-    tx.MutableBackupIncrementalBackupCollection()->SetTargetDir(NBackup::IncrementalBackupDirName(now));
+    auto now = NBackupCollection::ToX509String(TlsActivationContext->AsActorContext().Now());
+    tx.MutableBackupIncrementalBackupCollection()->SetTargetDir(NBackupCollection::IncrementalBackupDirName(now));
     return true;
 }
 

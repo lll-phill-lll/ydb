@@ -1,0 +1,20 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "ydb/library/yql/dq/actors/dq_events_ids.h"
+#include "ydb/library/yql/dq/opt/dq_opt_stat.h"
+#include "ydb/library/yql/providers/dq/planner/dqs_task_graph.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/driver/driver.h"
+#include "yql/essentials/core/dq_integration/yql_dq_integration.h"
+#include "yql/essentials/core/yql_expr_type_annotation.h"
+#include "yql/essentials/core/yql_opt_utils.h"
+#include "yql/essentials/minikql/computation/mkql_computation_node.h"
+#include "yql/essentials/minikql/mkql_program_builder.h"
+#include "yql/essentials/providers/common/config/yql_dispatch.h"
+#include "yql/essentials/providers/common/gateway/yql_provider_gateway.h"
+#include "yql/essentials/providers/common/provider/yql_data_provider_impl.h"
+#include "yql/essentials/providers/common/transform/yql_visit.h"
+#include "yql/essentials/providers/result/expr_nodes/yql_res_expr_nodes.h"
+#include "ydb/library/yql/dq/actors/protos/dq_status_codes.pb.h"
+#include "ydb/library/yql/providers/dq/api/protos/service.pb.h"
+#include "yql/essentials/providers/common/proto/gateways_config.pb.h"

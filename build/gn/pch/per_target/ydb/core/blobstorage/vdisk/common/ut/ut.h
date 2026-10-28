@@ -1,0 +1,26 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <future>
+#include "contrib/libs/openssl/include/openssl/ssl.h"
+#include "contrib/libs/protobuf/src/google/protobuf/map_field_inl.h"
+#include "library/cpp/monlib/dynamic_counters/percentile/percentile.h"
+#include "library/cpp/testing/unittest/registar.h"
+#include "ydb/core/base/bridge.h"
+#include "ydb/core/base/counters.h"
+#include "ydb/core/base/feature_flags.h"
+#include "ydb/core/blobstorage/base/blobstorage_syncstate.h"
+#include "ydb/core/blobstorage/base/bufferwithgaps.h"
+#include "ydb/core/blobstorage/base/utility.h"
+#include "ydb/core/blobstorage/pdisk/defs.h"
+#include "ydb/core/blobstorage/vdisk/common/disk_part.h"
+#include "ydb/core/blobstorage/vdisk/common/memusage.h"
+#include "ydb/core/util/pb.h"
+#include "ydb/library/actors/http/http_config.h"
+#include "ydb/library/pdisk_io/sector_map.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/types/status/status.h"
+#include "yql/essentials/public/issue/yql_issue.h"
+#include "ydb/core/blobstorage/vdisk/protos/events.pb.h"
+#include "ydb/core/protos/blobstorage_pdisk_config.pb.h"
+#include "ydb/core/protos/blobstorage_vdisk_config.pb.h"
+#include "ydb/core/protos/labeled_counters.pb.h"

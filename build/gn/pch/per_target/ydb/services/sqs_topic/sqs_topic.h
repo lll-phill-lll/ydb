@@ -1,0 +1,28 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <condition_variable>
+#include "library/cpp/json/json_writer.h"
+#include "ydb/core/base/tablet_pipecache.h"
+#include "ydb/core/base/ticket_parser.h"
+#include "ydb/core/grpc_services/grpc_request_proxy.h"
+#include "ydb/core/grpc_services/rpc_scheme_base.h"
+#include "ydb/core/persqueue/common/sourceid_info.h"
+#include "ydb/core/persqueue/public/cluster_tracker/cluster_tracker.h"
+#include "ydb/core/persqueue/public/counters/percentile_counter.h"
+#include "ydb/core/tablet/tablet_counters.h"
+#include "ydb/core/ymq/error/error.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/driver/driver.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/topic/codecs.h"
+#include "ydb/public/sdk/cpp/src/library/grpc/client/grpc_common.h"
+#include "ydb/services/sqs_topic/error.h"
+#include "ydb/services/sqs_topic/sqs_topic_proxy.h"
+#include "library/cpp/lwtrace/protos/lwtrace.pb.h"
+#include "ydb/core/protos/blobstorage_base.pb.h"
+#include "ydb/core/protos/grpc_pq_old.pb.h"
+#include "ydb/core/protos/pqdata_transaction.pb.h"
+#include "ydb/core/protos/scheme_board.pb.h"
+#include "ydb/core/protos/schemeshard/operations.pb.h"
+#include "ydb/public/api/grpc/draft/ydb_persqueue_v1.grpc.pb.h"
+#include "ydb/public/api/grpc/ydb_discovery_v1.grpc.pb.h"
+#include "ydb/public/api/protos/draft/persqueue_common.pb.h"

@@ -1,0 +1,25 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include <future>
+#include "contrib/libs/openssl/include/openssl/ssl.h"
+#include "contrib/libs/protobuf/src/google/protobuf/map_field_inl.h"
+#include "library/cpp/lwtrace/control.h"
+#include "library/cpp/monlib/metrics/metric.h"
+#include "library/cpp/monlib/service/pages/templates.h"
+#include "tools/enum_parser/enum_serialization_runtime/dispatch_methods.h"
+#include "ydb/core/scheme/scheme_pathid.h"
+#include "ydb/library/actors/core/actor_bootstrapped.h"
+#include "ydb/library/actors/core/actorsystem.h"
+#include "ydb/library/actors/core/mon.h"
+#include "ydb/library/actors/interconnect/event_filter.h"
+#include "ydb/library/actors/interconnect/poller/poller_tcp.h"
+#include "ydb/library/actors/memory_log/memlog.h"
+#include "ydb/library/actors/struct_log/json_writer.h"
+#include "ydb/library/actors/struct_log/log_stack.h"
+#include "ydb/library/conclusion/status.h"
+#include "ydb/library/signals/owner.h"
+#include "ydb/library/yql/dq/actors/dq_events_ids.h"
+#include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/types/status/status.h"
+#include "ydb/core/protos/labeled_counters.pb.h"
+#include "ydb/library/actors/protos/services_common.pb.h"

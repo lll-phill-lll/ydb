@@ -67,7 +67,7 @@ library("opt") {
     "//ydb/library/yql/dq/type_ann",
     # "//ydb/library/yql/providers/dq/common",
     # "//ydb/library/yql/providers/dq/expr_nodes",
-    # "//ydb/library/yql/providers/s3/expr_nodes",
+    "//ydb/library/yql/providers/s3/expr_nodes",
     # "//ydb/library/yql/providers/s3/statistics",
     "//ydb/library/yql/utils/plan",
     "//ydb/public/lib/value",

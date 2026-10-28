@@ -1,0 +1,23 @@
+// written by build/gn/scripts/pch_update.py
+#pragma once
+
+#include "library/cpp/json/json_reader.h"
+#include "library/cpp/json/writer/json.h"
+#include "library/cpp/testing/unittest/registar.h"
+#include "library/cpp/yaml/as/tstring.h"
+#include "util/string/ascii.h"
+#include "ydb/core/base/domain.h"
+#include "ydb/library/fyamlcpp/fyamlcpp.h"
+#include "yql/essentials/public/issue/yql_issue.h"
+#include "ydb/core/protos/blobstorage.pb.h"
+#include "ydb/core/protos/blobstorage_base.pb.h"
+#include "ydb/core/protos/blobstorage_base3.pb.h"
+#include "ydb/core/protos/blobstorage_config.pb.h"
+#include "ydb/core/protos/blobstorage_pdisk_config.pb.h"
+#include "ydb/core/protos/blobstorage_vdisk_config.pb.h"
+#include "ydb/core/protos/bootstrap.pb.h"
+#include "ydb/core/protos/config.pb.h"
+#include "ydb/core/protos/console_config.pb.h"
+#include "ydb/core/protos/netclassifier.pb.h"
+#include "ydb/library/actors/protos/interconnect.pb.h"
+#include "ydb/public/api/protos/ydb_config.pb.h"

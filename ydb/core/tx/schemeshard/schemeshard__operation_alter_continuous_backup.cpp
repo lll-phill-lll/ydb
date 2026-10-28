@@ -159,7 +159,7 @@ bool CreateAlterContinuousBackup(TOperationId opId, const TTxTransaction& tx, TO
         if (cbOp.GetTakeIncrementalBackup().HasDstStreamPath()) {
             newStreamName = cbOp.GetTakeIncrementalBackup().GetDstStreamPath();
         } else {
-            newStreamName = NBackup::ToX509String(TlsActivationContext->AsActorContext().Now()) + "_continuousBackupImpl";
+            newStreamName = NBackupCollection::ToX509String(TlsActivationContext->AsActorContext().Now()) + "_continuousBackupImpl";
         }
 
         const auto cdcChecksResult = NCdc::DoNewStreamPathChecks(context, opId, workingDirPath, tableName, newStreamName, false);
