@@ -1,14 +1,18 @@
 unittest_executable("ut_bridge") {
   deps = [
+    "//ydb/core/base",
     "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/blobstorage/ut_blobstorage/lib",
     "//ydb/core/blobstorage/vdisk/huge",
+    "//ydb/core/protos",
+    "//ydb/core/tablet",
   ]
 
   sources = [
     "//ydb/core/blobstorage/ut_blobstorage/bridge_assimilation.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_cluster_state.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_conversion.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_data_kind.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
