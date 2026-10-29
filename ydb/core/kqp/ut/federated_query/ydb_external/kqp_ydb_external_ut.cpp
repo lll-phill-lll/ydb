@@ -193,7 +193,7 @@ Y_UNIT_TEST_SUITE(KqpYdbExternal) {
         NYql::IModuleResolver::TPtr moduleResolver;
         UNIT_ASSERT(NYql::GetYqlDefaultModuleResolver(moduleCtx, moduleResolver));
 
-        auto countersRoot = MakeIntrusive<NMonitoring::TDynamicCounters>();
+        auto countersRoot = MakeIntrusive<::NMonitoring::TDynamicCounters>();
         auto counters = MakeIntrusive<TKqpRequestCounters>();
         counters->Counters = new TKqpCounters(countersRoot);
         counters->TxProxyMon = new NTxProxy::TTxProxyMon(countersRoot);

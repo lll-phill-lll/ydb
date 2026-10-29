@@ -1,0 +1,28 @@
+executable("pch_update") {
+    sources = [
+        "baseline.cpp",
+        "checks.cpp",
+        "common.cpp",
+        "dia.cpp",
+        "elf.cpp",
+        "facts.cpp",
+        "gni.cpp",
+        "groups.cpp",
+        "job_run.cpp",
+        "jobs.cpp",
+        "main.cpp",
+        "model.cpp",
+        "ninja.cpp",
+        "trace.cpp",
+        "write.cpp",
+    ]
+    deps = platform_deps + [
+        "//contrib/libs/cxxsupp/libcxx",
+        "//contrib/libs/rapidjson",
+    ]
+    configs -= [
+        "//build/gn/config:std_string",
+        "//build/gn/config:ydb_embedded_nbs",
+        "//build/gn/config:yql_abi",
+    ]
+}

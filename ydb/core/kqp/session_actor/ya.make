@@ -16,6 +16,7 @@ PEERDIR(
     ydb/core/kqp/tracing
     ydb/core/docapi
     ydb/core/kqp/common
+    ydb/core/kqp/common/compilation
     ydb/core/kqp/topics
     ydb/core/kqp/query_data
     ydb/core/kqp/federated_query

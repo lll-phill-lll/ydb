@@ -25,10 +25,8 @@ library("data_events") {
   ]
 
   deps = [
-    "//ydb/core/blobstorage/vdisk/protos",  # peerdir only
     "//ydb/core/tablet",
     "//ydb/core/tablet_flat",  # peerdir only
-    "//ydb/core/tablet_flat/protos",  # peerdir only
     # "//ydb/core/tx/columnshard/flow_control_manager",
     "//ydb/core/tx/schemeshard/olap/columns",
     "//ydb/core/tx/sharding",

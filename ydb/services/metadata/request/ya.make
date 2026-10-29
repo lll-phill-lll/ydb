@@ -7,6 +7,7 @@ SRCS(
     common.cpp
 )
 # gn: config headers config.h
+# gn: interface headers common.h request_actor.h request_actor_cb.h
 
 PEERDIR(
     ydb/library/actors/core

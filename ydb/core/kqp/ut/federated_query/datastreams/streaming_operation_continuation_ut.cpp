@@ -122,9 +122,9 @@ struct TContinuationTest {
         const auto endpoint = GetEnv("YDB_ENDPOINT");
         const auto database = GetEnv("YDB_DATABASE");
         TDriver externalDriver(TDriverConfig().SetEndpoint(endpoint).SetDatabase(database));
-        NTopic::TTopicClient topics(externalDriver);
+        NYdb::NTopic::TTopicClient topics(externalDriver);
         for (const auto& name : { InputTopic, OutputTopic }) {
-            auto status = topics.CreateTopic(name, NTopic::TCreateTopicSettings().PartitioningSettings(1, 1)).GetValueSync();
+            auto status = topics.CreateTopic(name, NYdb::NTopic::TCreateTopicSettings().PartitioningSettings(1, 1)).GetValueSync();
             UNIT_ASSERT_C(status.IsSuccess(), status.GetIssues().ToString());
         }
         Exec(TStringBuilder() << "CREATE EXTERNAL DATA SOURCE Source WITH (SOURCE_TYPE = 'Ydb', LOCATION = '" << endpoint

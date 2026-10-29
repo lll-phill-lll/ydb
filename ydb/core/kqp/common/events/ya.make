@@ -11,7 +11,7 @@ PEERDIR(
     ydb/core/grpc_services/base
     ydb/core/grpc_services/cancelation
     ydb/core/kqp/common/shutdown
-    ydb/core/kqp/common/compilation
+    ydb/core/kqp/common/compilation  # gn: :interface
     ydb/core/resource_pools
     ydb/core/scheme
 

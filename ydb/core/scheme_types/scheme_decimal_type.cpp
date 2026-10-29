@@ -16,7 +16,7 @@ TDecimalType::TDecimalType(ui32 precision, ui32 scale)
     : Precision(precision)
     , Scale(scale)
 {
-    TString error;
+    ::TString error;
     Y_ENSURE(Validate(precision, scale, error), error);
 }
 
@@ -24,7 +24,7 @@ bool TDecimalType::operator==(const TDecimalType& other) const {
     return Precision == other.Precision && Scale == other.Scale;
 } 
 
-TString TDecimalType::CellValueToString(const std::pair<ui64, i64>& cellValue) const {
+::TString TDecimalType::CellValueToString(const std::pair<ui64, i64>& cellValue) const {
     return NYql::NDecimal::ToString(NYql::NDecimal::FromHalfs(cellValue.first, cellValue.second),
         Precision, Scale);
 }
@@ -56,7 +56,7 @@ const std::optional<TDecimalType> TDecimalType::ParseTypeName(const TStringBuf& 
     }
 }
 
-bool TDecimalType::Validate(ui32 precision, ui32 scale, TString& error) {
+bool TDecimalType::Validate(ui32 precision, ui32 scale, ::TString& error) {
     if (precision == 0) {
         error = Sprintf("Decimal precision should not be zero");
         return false;

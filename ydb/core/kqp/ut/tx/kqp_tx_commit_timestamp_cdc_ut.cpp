@@ -30,11 +30,11 @@ TVector<NJson::TJsonValue> ReadCdcMessages(TKikimrRunner& kikimr, const TString&
         }
 
         for (auto& ev : readSession->GetEvents(false)) {
-            if (auto* startEvent = std::get_if<NTopic::TReadSessionEvent::TStartPartitionSessionEvent>(&ev)) {
+            if (auto* startEvent = std::get_if<NYdb::NTopic::TReadSessionEvent::TStartPartitionSessionEvent>(&ev)) {
                 startEvent->Confirm();
-            } else if (auto* stopEvent = std::get_if<NTopic::TReadSessionEvent::TStopPartitionSessionEvent>(&ev)) {
+            } else if (auto* stopEvent = std::get_if<NYdb::NTopic::TReadSessionEvent::TStopPartitionSessionEvent>(&ev)) {
                 stopEvent->Confirm();
-            } else if (auto* data = std::get_if<NTopic::TReadSessionEvent::TDataReceivedEvent>(&ev)) {
+            } else if (auto* data = std::get_if<NYdb::NTopic::TReadSessionEvent::TDataReceivedEvent>(&ev)) {
                 for (const auto& m : data->GetMessages()) {
                     NJson::TJsonValue json;
                     if (NJson::ReadJsonTree(m.GetData(), &json)) {
@@ -42,7 +42,7 @@ TVector<NJson::TJsonValue> ReadCdcMessages(TKikimrRunner& kikimr, const TString&
                     }
                 }
                 data->Commit();
-            } else if (std::get_if<NTopic::TSessionClosedEvent>(&ev)) {
+            } else if (std::get_if<NYdb::NTopic::TSessionClosedEvent>(&ev)) {
                 return result;
             }
         }
@@ -260,10 +260,10 @@ Y_UNIT_TEST_SUITE(KqpTxCommitTimestampCdc) {
             UNIT_ASSERT_C(writeSession->WaitEvent().Wait(TDuration::Seconds(30)),
                 "Timed out waiting for topic write session readiness");
             for (auto& ev : writeSession->GetEvents()) {
-                if (auto* e = std::get_if<NTopic::TWriteSessionEvent::TReadyToAcceptEvent>(&ev)) {
+                if (auto* e = std::get_if<NYdb::NTopic::TWriteSessionEvent::TReadyToAcceptEvent>(&ev)) {
                     continuationToken = std::move(e->ContinuationToken);
                     readyToAccept = true;
-                } else if (std::get_if<NTopic::TSessionClosedEvent>(&ev)) {
+                } else if (std::get_if<NYdb::NTopic::TSessionClosedEvent>(&ev)) {
                     UNIT_ASSERT_C(false, "Topic write session closed unexpectedly");
                 }
             }
@@ -281,13 +281,13 @@ Y_UNIT_TEST_SUITE(KqpTxCommitTimestampCdc) {
             UNIT_ASSERT_C(writeSession->WaitEvent().Wait(TDuration::Seconds(30)),
                 "Timed out waiting for topic write ack");
             for (auto& ev : writeSession->GetEvents()) {
-                if (auto* e = std::get_if<NTopic::TWriteSessionEvent::TAcksEvent>(&ev)) {
+                if (auto* e = std::get_if<NYdb::NTopic::TWriteSessionEvent::TAcksEvent>(&ev)) {
                     for (const auto& ack : e->Acks) {
-                        if (ack.State == NTopic::TWriteSessionEvent::TWriteAck::EES_WRITTEN_IN_TX) {
+                        if (ack.State == NYdb::NTopic::TWriteSessionEvent::TWriteAck::EES_WRITTEN_IN_TX) {
                             gotWrittenInTxAck = true;
                         }
                     }
-                } else if (std::get_if<NTopic::TSessionClosedEvent>(&ev)) {
+                } else if (std::get_if<NYdb::NTopic::TSessionClosedEvent>(&ev)) {
                     UNIT_ASSERT_C(false, "Topic write session closed unexpectedly");
                 }
             }

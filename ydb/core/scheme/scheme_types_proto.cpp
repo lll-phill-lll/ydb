@@ -104,7 +104,7 @@ NScheme::TTypeInfo TypeInfoFromProto(NScheme::TTypeId typeId, const ::NKikimrPro
     }
 }
 
-bool TypeInfoFromProto(const ::Ydb::Type& typeProto, TTypeInfoMod& typeInfoMod, TString& error) {
+bool TypeInfoFromProto(const ::Ydb::Type& typeProto, TTypeInfoMod& typeInfoMod, ::TString& error) {
     if (typeProto.has_type_id()) {
         typeInfoMod = {NScheme::TTypeInfo(typeProto.type_id()), {}};
         return true;

@@ -574,3 +574,5 @@ public:
 };
 
 }   // namespace NKikimr::NColumnShard
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NColumnShard::TScanCounters::EIntervalStatus, os, n);

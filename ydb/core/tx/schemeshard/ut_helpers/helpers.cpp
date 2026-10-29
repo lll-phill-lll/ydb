@@ -3458,7 +3458,7 @@ namespace NSchemeShardUT_Private {
             const auto& columnShards = path.GetColumnTableDescription().GetSharding().GetColumnShards();
             UNIT_ASSERT_VALUES_EQUAL(columnShards.size(), 1);
             NTxUT::TShardReader reader(static_cast<TTestBasicRuntime&>(runtime), columnShards.Get(0), pathId,
-                NOlap::TSnapshot::MaxForPlanStep(planStep));
+                NKikimr::NOlap::TSnapshot::MaxForPlanStep(planStep));
             reader.SetReplyColumnIds({1, 2});
             auto rows = reader.ReadAll();
             UNIT_ASSERT(reader.IsCorrectlyFinished());

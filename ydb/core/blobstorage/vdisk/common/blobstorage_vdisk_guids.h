@@ -92,3 +92,7 @@ namespace NKikimr {
 
 } // NKikimr
 
+
+Y_DECLARE_OUT_SPEC(, NKikimr::TVDiskIncarnationGuid, stream, value);
+
+Y_DECLARE_OUT_SPEC(, NKikimr::TVDiskEternalGuid, stream, value);

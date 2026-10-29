@@ -28,7 +28,7 @@ PEERDIR(
     ydb/services/udf_store/compile_controller/protos
     ydb/services/udf_store/metadata_subscription
     ydb/services/udf_store/wasm
-    ydb/services/metadata/request
+    ydb/services/metadata/request  # gn: :interface :config
     ydb/services/metadata/abstract
     ydb/services/metadata/manager
     ydb/services/metadata

@@ -1,5 +1,15 @@
+group("auth_factory") {
+  public_deps = [
+    # "//ydb/core/base",
+    "//ydb/core/protos",
+    "//ydb/library/actors/core",
+    "//ydb/library/http_proxy/authorization",
+  ]
+}
+
 library("http_proxy") {
   public_deps = [
+    ":auth_factory",
     # "//contrib/libs/grpc",
     # "//contrib/libs/protobuf",
     "//contrib/restricted/nlohmann_json",

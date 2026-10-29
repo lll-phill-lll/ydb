@@ -6,7 +6,7 @@ unittest_executable("ut") {
     "//ydb/core/base",
     "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/kqp/common",
-    "//ydb/core/kqp/common/compilation",
+    "//ydb/core/kqp/common/compilation:interface",
     "//ydb/core/kqp/common/events",
     "//ydb/core/kqp/common/simple",
     "//ydb/core/kqp/counters",

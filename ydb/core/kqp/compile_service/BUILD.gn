@@ -20,7 +20,8 @@ library("compile_service") {
     "//ydb/core/actorlib_impl",
     # "//ydb/core/client/minikql_compile",
     # "//ydb/core/cms/console",
-    # "//ydb/core/kqp/common/compilation",
+    "//ydb/core/kqp/common/compilation",  # peerdir only
+    # "//ydb/core/kqp/common/compilation:interface",
     # "//ydb/core/kqp/common/events",
     # "//ydb/core/kqp/counters",
     "//ydb/core/kqp/gateway",

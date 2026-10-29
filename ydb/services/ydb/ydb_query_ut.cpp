@@ -18,7 +18,7 @@ using namespace NTestHelpers;
 
 namespace {
 
-struct TMockMonHttpRequest : NMonitoring::IMonHttpRequest {
+struct TMockMonHttpRequest : ::NMonitoring::IMonHttpRequest {
     TCgiParameters Params_;
 
     explicit TMockMonHttpRequest(const TString& params) {
@@ -38,8 +38,8 @@ struct TMockMonHttpRequest : NMonitoring::IMonHttpRequest {
     TStringBuf GetCookie(TStringBuf) const override { Y_ABORT("Not implemented"); }
     TString GetRemoteAddr() const override { Y_ABORT("Not implemented"); }
     TString GetServiceTitle() const override { Y_ABORT("Not implemented"); }
-    NMonitoring::IMonPage* GetPage() const override { Y_ABORT("Not implemented"); }
-    NMonitoring::IMonHttpRequest* MakeChild(NMonitoring::IMonPage*, const TString&) const override { Y_ABORT("Not implemented"); }
+    ::NMonitoring::IMonPage* GetPage() const override { Y_ABORT("Not implemented"); }
+    ::NMonitoring::IMonHttpRequest* MakeChild(::NMonitoring::IMonPage*, const TString&) const override { Y_ABORT("Not implemented"); }
 };
 
 } // namespace

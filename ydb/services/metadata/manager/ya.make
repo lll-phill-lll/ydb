@@ -27,7 +27,7 @@ PEERDIR(
     ydb/services/bg_tasks/abstract
     ydb/services/metadata/initializer
     ydb/core/base
-    ydb/services/metadata/request
+    ydb/services/metadata/request  # gn: :interface :config
 )
 
 GENERATE_ENUM_SERIALIZATION(abstract.h)

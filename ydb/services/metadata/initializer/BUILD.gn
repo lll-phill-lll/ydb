@@ -8,8 +8,8 @@ library("initializer") {
     "//ydb/services/metadata/abstract",
     # "//ydb/services/metadata/ds_table",
     "//ydb/services/metadata/manager",
-    "//ydb/services/metadata/request",
     "//ydb/services/metadata/request:config",
+    "//ydb/services/metadata/request:interface",
   ]
 
   deps = [

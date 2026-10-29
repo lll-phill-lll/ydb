@@ -1,3 +1,5 @@
+import("//build/gn/pch/global/pch_flags.gni")
+
 template("shared_pch") {
   _name = target_name
   _compile = "${_name}_compile"
@@ -23,14 +25,7 @@ template("shared_pch") {
   source_set(_compile) {
     visibility = [ ":*" ]
     sources = [ invoker.source ]
-    cflags_cc = [
-      "-x",
-      "c++-header",
-      "-fpch-instantiate-templates",
-      "-relocatable-pch",
-      "-Xclang",
-      "-fno-pch-timestamp",
-    ] + _pch_root
+    cflags_cc = pch_only_cflags + _pch_root
     if (defined(invoker.cflags)) {
       cflags = invoker.cflags
     }

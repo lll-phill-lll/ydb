@@ -3286,7 +3286,7 @@ Y_UNIT_TEST_SUITE(KqpConstraints) {
         {
             auto event = readSession->GetEvent(/* block = */ true, /* maxEventsCount = */ 1);
             UNIT_ASSERT(event);
-            auto* startEvent = std::get_if<NTopic::TReadSessionEvent::TStartPartitionSessionEvent>(&*event);
+            auto* startEvent = std::get_if<NYdb::NTopic::TReadSessionEvent::TStartPartitionSessionEvent>(&*event);
             UNIT_ASSERT(startEvent);
             startEvent->Confirm();
         }
@@ -3304,7 +3304,7 @@ Y_UNIT_TEST_SUITE(KqpConstraints) {
                 }
 
                 for (auto& ev : readSession->GetEvents(false)) {
-                    if (auto* e = std::get_if<NTopic::TReadSessionEvent::TDataReceivedEvent>(&ev)) {
+                    if (auto* e = std::get_if<NYdb::NTopic::TReadSessionEvent::TDataReceivedEvent>(&ev)) {
                         for (auto& m : e->GetMessages()) {
                             messages.emplace_back(m.GetData());
                         }
@@ -3447,7 +3447,7 @@ Y_UNIT_TEST_SUITE(KqpConstraints) {
         {
             auto event = readSession->GetEvent(/* block = */ true, /* maxEventsCount = */ 1);
             UNIT_ASSERT(event);
-            auto* startEvent = std::get_if<NTopic::TReadSessionEvent::TStartPartitionSessionEvent>(&*event);
+            auto* startEvent = std::get_if<NYdb::NTopic::TReadSessionEvent::TStartPartitionSessionEvent>(&*event);
             UNIT_ASSERT(startEvent);
             startEvent->Confirm();
         }
@@ -3465,7 +3465,7 @@ Y_UNIT_TEST_SUITE(KqpConstraints) {
                 }
 
                 for (auto& ev : readSession->GetEvents(false)) {
-                    if (auto* e = std::get_if<NTopic::TReadSessionEvent::TDataReceivedEvent>(&ev)) {
+                    if (auto* e = std::get_if<NYdb::NTopic::TReadSessionEvent::TDataReceivedEvent>(&ev)) {
                         for (auto& m : e->GetMessages()) {
                             messages.emplace_back(m.GetData());
                         }

@@ -236,7 +236,7 @@ struct TSimulatedCA {
         Runtime.GetLogSettings(0)->Append(
             NKikimrServices::EServiceKikimr_MIN, NKikimrServices::EServiceKikimr_MAX, NKikimrServices::EServiceKikimr_Name);
         if (GetEnv("S3_UT_DEBUG")) {
-            Runtime.SetLogPriority(NKikimrServices::KQP_COMPUTE, NLog::PRI_TRACE);
+            Runtime.SetLogPriority(NKikimrServices::KQP_COMPUTE, NActors::NLog::PRI_TRACE);
         }
         Runtime.SetObserverFunc([this](TAutoPtr<IEventHandle>& ev) {
             for (const auto& observer : Observers) {

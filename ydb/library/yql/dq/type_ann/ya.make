@@ -6,7 +6,6 @@ PEERDIR(
     ydb/library/yql/dq/proto
     yql/essentials/ast
     yql/essentials/core
-    yql/essentials/core/type_ann
     yql/essentials/providers/common/provider
     yql/essentials/providers/common/transform
 )

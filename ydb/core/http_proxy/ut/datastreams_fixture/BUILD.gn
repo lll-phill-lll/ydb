@@ -11,6 +11,7 @@ library("datastreams_fixture") {
     # "//library/cpp/testing/unittest",
     # "//ydb/core/formats/arrow",
     "//ydb/core/http_proxy",
+    # "//ydb/core/http_proxy:auth_factory",
     # "//ydb/core/mon",
     # "//ydb/core/security/certificate_check/test_utils",
     "//ydb/core/testlib",

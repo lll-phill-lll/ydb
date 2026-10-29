@@ -25,13 +25,21 @@ each class: the headers adding most to G = q * (saving of a build from
 scratch) + (1 - q) * (mean saving of a build of a commit with the cache of
 its parent), where a commit changing a header of a PCH rebuilds all the files
 of its group; the targets losing on their group leave it and form the next.
+With --max-group-files N the targets of a class are first packed by their
+dirs into parts of at most N C++ files (a dir over it split into its subdirs,
+neighbours joined while they fit), the groups formed in each part: a header
+of a PCH changing rebuilds at most about N files. A group gaining less than
+_MIN_GROUP_G is not formed. --q 0 (the default) counts
+only the incremental builds, 0.1 the CI too.
 
 Last, the checks of each group: its PCH compiled with the flags of the
 group, a file of each target compiled with it, -E with the -D only some of
-its files have. A header breaking a target or depending on such a -D either
-leaves the PCH (with the headers including it) or the targets it breaks
-leave the group, whichever gives more G; the group is formed again and
-checked again.
+its files have (a #define of a file before its last #include counted as a
+-D: the ones -E -dD of its compile shows, its #if evaluated). A header
+breaking a target or depending on such a -D either leaves the PCH (with the
+headers including it) or the targets it breaks leave the group, whichever
+gives more G; the group is formed again and checked again. A group made
+again as one failed has no PCH: no round checks what one did, the checks end.
 
 Then it writes //build/gn/pch/global for pch_mode = "global": groups.gni (the
 targets, the generators of its headers, the flags of each group but the
@@ -59,6 +67,7 @@ from the start); the checks of a group done before are taken as they went.
 The output also goes to <cache dir>/logs/<time>.log.
 
 Usage: pch_update.py --baseline <out> [--per-target] [--targets all tests]
+                     [--q 0] [--max-group-files 500]
                      [--max-missing-traces 0.01] [-j N] [--check-jobs N]
                      [--main-ref origin/main] [--cache-dir ~/.cache/pch_update]
                      [--fresh]
@@ -539,9 +548,6 @@ def traces(args, base):
     for name in sorted(parse):
         if not known_location(name, compiler):
             problems["headers: neither in the source tree, the build dir, the sysroot nor the compiler"].append(name)
-    missing = [display(r) for r in sorted(roots) if not any(includes(name, r) for name in parse)]
-    if missing:
-        problems["headers of //build/gn/pch/global in no trace"].extend(missing)
 
     print("traces:           %d of %d read" % (read, len(traced)))
     print("problems:         %d" % sum(len(v) for v in problems.values()))
@@ -827,24 +833,8 @@ def flag_classes(args, base):
 
 _HEADER_MIN_PARSE = 30 * 10**6  # us of parse in all the files: the headers parsed less are not checked alone
 _SHOW_H_RE = re.compile(r"^(\.+) (.*)$")
-_COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
-_INCLUDE_LINE_RE = re.compile(r"^\s*#\s*include\b")
-_SOURCE_PREFIX = 1 << 16        # bytes of a source read for what comes before its first #include
 _CACHE_VARIANTS = 8             # results kept per header
 _TREE_SHIFT, _TREE_ID = 40, (1 << 40) - 1
-
-
-def includes_first(path):
-    """Whether only comments come before the first #include of a source."""
-    try:
-        with open(path, encoding="utf-8", errors="replace") as f:
-            text = _COMMENT_RE.sub(" ", f.read(_SOURCE_PREFIX))
-    except OSError:
-        return False
-    for line in text.splitlines():
-        if line.strip():
-            return bool(_INCLUDE_LINE_RE.match(line))
-    return False
 
 
 class FactsCache(object):
@@ -948,37 +938,27 @@ def header_facts(args, base):
         parents[x & mask].add(x >> 32)
     candidates = [h for h in range(len(names))
                   if len(base["header_files"][h]) >= 2 and sum(base["header_parse"][h]) >= _HEADER_MIN_PARSE]
-    first_of = collections.defaultdict(list)
-    for obj, h in base["first_header"].items():
-        first_of[h].append(obj)
     cache = FactsCache(os.path.join(args.cache_dir, "header_facts.pickle"), base)
 
     ok, trees, errors = set(), {}, {}
-    from_traces = from_cache = 0
+    from_cache = 0
     tmp = tempfile.mkdtemp(prefix="pch_update.")
     try:
         jobs, keys = [], {}
         for h in candidates:
             files = base["header_files"][h]
             n = collections.Counter(class_of[objs[t]] for t in files).most_common(1)[0][0]
-            # a header a file includes first compiles alone; the trace misses
-            # the includes shorter than its granularity: -E -H shows them
-            traced = any(class_of[o] == n and not base["forced_of"][o] and
-                         includes_first(os.path.join(base["build_dir"], base["source_of"][o])) for o in first_of[h])
-            if traced:
-                ok.add(h)
-                from_traces += 1
             obj = min(objs[t] for t in files if class_of[objs[t]] == n)
             argv = ([base["compiler"]] + list(base["class_flags"][n - 1]) + base["defines_of"][obj] +
                     [a for opt, d in base["include_dirs_of"][obj] for a in (opt, d)] +
-                    ["-w", "-E" if traced else "-fsyntax-only", "-H", "-ferror-limit=1"])
+                    ["-w", "-fsyntax-only", "-H", "-ferror-limit=1"])
             keys[h] = key = cache.key(argv + [spelling(base, names[h])])
             got = cache.get(names[h], key)
             if got is not None:
                 rc, trees[h], errors[h] = got
                 if not rc:
                     ok.add(h)
-                from_cache += not traced
+                from_cache += 1
                 continue
             src = os.path.join(tmp, "h%d.cpp" % h)
             with open(src, "w") as f:
@@ -1021,10 +1001,10 @@ def header_facts(args, base):
                 base["header_edges"].add(parent << 32 | name)
                 learned += 1
     base["self_contained"] = ok
-    print("headers alone:    %d of %d compile (parsed %s+ in 2+ files): from traces %d (includes by -E), from cache %d, "
+    print("headers alone:    %d of %d compile (parsed %s+ in 2+ files): from cache %d, "
           "compiled %d; includes learned %d%s" % (
-              len(ok), len(candidates), duration(_HEADER_MIN_PARSE), from_traces, from_cache,
-              len(candidates) - from_traces - from_cache, learned, ("; e.g. " + example) if example else ""))
+              len(ok), len(candidates), duration(_HEADER_MIN_PARSE), from_cache,
+              len(candidates) - from_cache, learned, ("; e.g. " + example) if example else ""))
     print("  the rest in a PCH only with a header including them: %d of %d" % (len(names) - len(ok), len(names)))
     return True
 
@@ -1036,11 +1016,10 @@ def header_facts(args, base):
 _Q = 0.1                # share of the CI builds with an empty cache
 _CORES = 52             # of a CI machine
 _LOAD_SHARE = 0.02      # a file loading a PCH spends this share of the PCH compile: a guess until measured
-_MAX_GROUPS = 8         # per class
+_MIN_GROUP_G = 60 * 10**6       # us of G: a group saving less has no PCH
 _SPLIT_SEEDS = 3        # headers tried for splitting a group
 _SEED_CANDIDATES = 300  # headers of the most parse the seeds are taken from
 _PACKAGES = 30          # headers tried with the headers they include at once
-_MEMBERSHIP_ROUNDS = 5
 _TOP_RESIDUAL = 15
 _TOP_DIRS = 4
 _TOP_ROOTS = 3
@@ -1193,7 +1172,8 @@ def build_model(base):
             "files": files, "own": own, "parse": parse, "build": build, "total_parse": total_parse,
             "commits": commits, "ready": ready, "nfiles": nfiles, "ntotal": ntotal,
             "compile": [base["compile_us"][obj] for obj in objs], "rebuilt": base["rebuilt"],
-            "ncommits": len(base["rebuilt"]), "files_of": files_of}
+            "ncommits": len(base["rebuilt"]), "files_of": files_of,
+            "q": base.get("q", _Q), "max_group_files": base.get("max_group_files", 0)}
 
 
 class Selection(object):
@@ -1429,15 +1409,13 @@ def form_group(m, pool, banned=None):
     """A selection for the targets of `pool` gaining from it: the targets
     adding to G stay, the selection is made again for them."""
     members = set(pool)
-    sel = None
-    for _ in range(_MEMBERSHIP_ROUNDS):
+    while True:
         sel = Selection(m, members, banned)
-        contrib = sel.contributions(pool)
-        new = set(t for t in pool if contrib.get(t, 0) > 0)
+        contrib = sel.contributions(members)
+        new = set(t for t in members if contrib.get(t, 0) > 0)
         if new == members or not new:
-            break
+            return sel
         members = new
-    return sel
 
 
 def split_seeds(m, sel):
@@ -1459,32 +1437,33 @@ class _Taken(Selection):
 
 def shrunk(m, pool, headers, banned):
     """A selection for the targets of `pool` gaining from it, of the units of
-    `headers` having no other header, none banned: no header added."""
+    `headers` having no other header, none banned, some file of its targets
+    including them: no header added, the ones only targets gone include
+    dropped (and the include dirs their files bring)."""
     units = set(m["comp"][h] for h in headers)
     units = [u for u in units if not banned[u] and all(h in headers for h in m["headers"][u])]
     members = set(pool)
-    sel = None
-    for _ in range(_MEMBERSHIP_ROUNDS):
+    while True:
+        files = set(t for target in members for t in m["files_of"][target])
         sel = _Taken(m, members, banned)
-        sel.accept(units)
-        contrib = sel.contributions(pool)
-        new = set(t for t in pool if contrib.get(t, 0) > 0)
+        sel.accept([u for u in units if not files.isdisjoint(m["files"][u])])
+        contrib = sel.contributions(members)
+        new = set(t for t in members if contrib.get(t, 0) > 0)
         if new == members or not new:
-            break
+            return sel
         members = new
-    return sel
 
 
 def groups_of_class(m, targets, banned=None):
     pool, out = set(targets), []
-    while pool and len(out) < _MAX_GROUPS:
+    while pool:
         sel = form_group(m, pool, banned)
-        if sel.value <= 0:
+        if sel.value < _MIN_GROUP_G:
             break
         out.append(sel)
         pool -= sel.members
     i = 0
-    while i < len(out) and len(out) < _MAX_GROUPS:
+    while i < len(out):
         sel, best = out[i], None
         for u in split_seeds(m, sel):
             files = set(m["files"][u])
@@ -1493,13 +1472,76 @@ def groups_of_class(m, targets, banned=None):
             if not sub or sub == sel.members:
                 continue
             parts = [form_group(m, sub, banned), form_group(m, sel.members - sub, banned)]
-            value = sum(p.value for p in parts if p.value > 0)
+            value = sum(p.value for p in parts if p.value >= _MIN_GROUP_G)
             if value > sel.value and (best is None or value > best[0]):
-                best = (value, [p for p in parts if p.value > 0])
+                best = (value, [p for p in parts if p.value >= _MIN_GROUP_G])
         if best:
             out[i:i + 1] = best[1]
         else:
             i += 1
+    return out
+
+
+def dir_parts(m, targets, cap):
+    """The targets packed by their dirs into parts of at most `cap` files (a
+    target of more alone): a dir of more split into its own targets and its
+    subdirs, neighbours joined while they fit."""
+    tree = lambda: collections.defaultdict(tree)  # noqa: E731
+    root, leaves = tree(), collections.defaultdict(list)
+    for t in targets:
+        path = tuple(t[2:].partition(":")[0].split("/"))
+        node = root
+        for part in path:
+            node = node[part]
+        leaves[path].append(t)
+
+    def size(path, node):
+        return sum(len(m["files_of"][t]) for t in leaves.get(path, ())) + \
+            sum(size(path + (k,), v) for k, v in node.items())
+
+    def all_targets(path, node):
+        out = list(leaves.get(path, ()))
+        for k, v in sorted(node.items()):
+            out.extend(all_targets(path + (k,), v))
+        return out
+
+    def pack(path, node):
+        n = size(path, node)
+        if n <= cap:
+            return [(n, all_targets(path, node))]
+        parts = [(len(m["files_of"][t]), [t]) for t in sorted(leaves.get(path, ()), key=lambda t: -len(m["files_of"][t]))]
+        for k, v in sorted(node.items()):
+            parts.extend(pack(path + (k,), v))
+        out = []
+        for n, ts in parts:
+            if out and out[-1][0] + n <= cap:
+                out[-1] = (out[-1][0] + n, out[-1][1] + ts)
+            else:
+                out.append((n, list(ts)))
+        return out
+
+    return [ts for _, ts in pack((), root)]
+
+
+def class_groups(m, targets, banned=None, contrib=False):
+    """The groups of targets of a class, each gaining _MIN_GROUP_G. With
+    m["max_group_files"]: the groups of each part of dir_parts(); else
+    groups_of_class(), the targets without //util (`contrib`) in one group."""
+    cap = m["max_group_files"]
+    if not cap:
+        if not contrib:
+            return groups_of_class(m, targets, banned)
+        sel = form_group(m, targets, banned)
+        return [sel] if sel.value >= _MIN_GROUP_G else []
+    out = []
+    for part in dir_parts(m, targets, cap):
+        pool = set(part)
+        while pool:
+            sel = form_group(pool_model(m, pool, m["q"]), pool, banned)
+            if sel.value < _MIN_GROUP_G:
+                break
+            out.append(sel)
+            pool -= sel.members
     return out
 
 
@@ -1550,6 +1592,7 @@ def is_contrib(base, sel):
 
 def groups(args, base):
     log("forming groups...")
+    base.update(q=args.q, max_group_files=args.max_group_files)
     m = build_model(base)
     target_of = base["target_of"]
     contrib, contrib_bans = no_util(base, m)
@@ -1558,18 +1601,18 @@ def groups(args, base):
     print("%-18s%d of %d targets without //util, headers banned for them %d" % (
         "contrib:", len(contrib), sum(1 for t in m["files_of"] if not t.endswith(_ENUM_OBJS)), len(contrib_bans)))
 
+    print("%-18sq = %g, %s" % ("groups:", m["q"], "parts of the dir tree of at most %d files" % m["max_group_files"]
+                                  if m["max_group_files"] else "no limit of files"))
+
     found = []                                  # (class, selection)
     for n, class_objs in enumerate(base["classes"], 1):
         # the enum serialization of enum_serialization_pch_exclude: no PCH
         targets = sorted(set(target_of[o] for o in class_objs if not target_of[o].endswith(_ENUM_OBJS)))
         log("class %d: %d targets..." % (n, len(targets)))
-        found.extend((n, sel) for sel in groups_of_class(m, [t for t in targets if t not in contrib]))
-        # contrib: one group, no subgroups
+        found.extend((n, sel) for sel in class_groups(m, [t for t in targets if t not in contrib]))
         own = [t for t in targets if t in contrib]
         if own:
-            sel = form_group(m, own, banned)
-            if sel.value > 0:
-                found.append((n, sel))
+            found.extend((n, sel) for sel in class_groups(m, own, banned, contrib=True))
     base.update(model=m, found=found)
     report_groups(base, "groups")
     return True
@@ -1609,25 +1652,37 @@ def by_file(m):
     return m["by_file"]
 
 
-def target_model(m, target):
-    """The model of the files of one target: the units they parse, the
-    commits rebuilding them; the rest as in `m`."""
+def pool_model(m, targets, q):
+    """The model of the files of `targets`: the units they parse, the commits
+    rebuilding them; the rest as in `m`. A selection over them is the same as
+    in `m`, made faster -- but for half the files or more."""
+    sub = dict(m)
+    sub["q"] = q
+    if sum(len(m["files_of"][t]) for t in targets) * 2 > m["nfiles"]:
+        return sub
     units_of, own_of, parse_of = by_file(m)
     acc = collections.defaultdict(lambda: ([], [], []))
-    for t in m["files_of"][target]:
-        for u, e, p in zip(units_of[t], own_of[t], parse_of[t]):
-            a = acc[u]
-            a[0].append(t)
-            a[1].append(e)
-            a[2].append(p)
+    for target in targets:
+        for t in m["files_of"][target]:
+            for u, e, p in zip(units_of[t], own_of[t], parse_of[t]):
+                a = acc[u]
+                a[0].append(t)
+                a[1].append(e)
+                a[2].append(p)
     files, own, parse = _Sparse(), _Sparse(), _Sparse()
     for u, (fs, es, ps) in acc.items():
         files[u], own[u], parse[u] = array.array("i", fs), array.array("q", es), array.array("q", ps)
-    rebuilt_of = m["rebuilt_of"].get(target, {})
-    sub = dict(m)
-    sub.update(files=files, own=own, parse=parse, units=sorted(acc), q=_Q_PER_TARGET,
-               rebuilt=[rebuilt_of.get(k, ()) for k in range(m["ncommits"])])
+    rebuilt = [[] for _ in range(m["ncommits"])]
+    for target in targets:
+        for k, ts in m["rebuilt_of"].get(target, {}).items():
+            rebuilt[k].extend(ts)
+    sub.update(files=files, own=own, parse=parse, units=sorted(acc), rebuilt=rebuilt)
     return sub
+
+
+def target_model(m, target):
+    """The model of the files of one target (--per-target)."""
+    return pool_model(m, [target], _Q_PER_TARGET)
 
 
 def target_selection(m, target, banned=None):
@@ -1803,7 +1858,6 @@ def report_groups(base, title):
 # checks
 # =============================================================================
 
-_CHECK_ROUNDS = 12
 _MIN_KEPT = 0.5                 # share of the targets with a PCH the checks may leave: fewer, and nothing is written
 _TOP_FAILURES = 5               # reasons of failing shown
 
@@ -1820,13 +1874,17 @@ _INCLUDED_FROM_RE = re.compile(r"^In file included from (.+?):(\d+):$")
 _ERROR_RE = re.compile(r"^(.+?):(\d+):\d+: (?:fatal )?error: (.*)$")
 _DIAG_RE = re.compile(r"^(.+?):(\d+):\d+: (fatal error|error|note): (.*)$")
 _QUOTED_RE = re.compile(r"'((?:[A-Za-z_]\w*)?(?:::[A-Za-z_]\w*)+|[A-Za-z_]\w*)'")
+# 'Out<NKikimr::TVSlotId>' of a specialization a header of the PCH uses first: the names of its arguments
+_SPECIALIZED_RE = re.compile(r"explicit specialization of '[^<']*<(.*)>' after instantiation")
+_NAME_RE = re.compile(r"[A-Za-z_]\w*(?:::[A-Za-z_]\w*)*")
 _NAME_CULPRITS = 3              # headers of a name an error quotes: more, and the error is on none
 _MACRO_LINE_RE = re.compile(r"^#define ([A-Za-z_]\w*)")
 _MACRO_DIRECTIVE_RE = re.compile(r"^\s*#\s*(define|undef)\s+([A-Za-z_]\w*)", re.M)
 _METADATA_RE = re.compile(r"^!(\d+) = (?:distinct )?!(\w+)\((.*)\)$")
 _DBG_RE = re.compile(r"!dbg !(\d+)")
 _FIELD_RE = re.compile(r'(\w+): (?:"((?:[^"\\]|\\.)*)"|!(\d+)|(\w+))')
-_FOR_O0 = ("-O", "-g", "-gz", "-gsplit-dwarf")
+# and the path maps: the debug info of the probe keeps whole paths
+_FOR_O0 = ("-O", "-g", "-gz", "-gsplit-dwarf", "-ffile-prefix-map=", "-fdebug-prefix-map=", "-fdebug-compilation-dir")
 # the link of the empty file with a PCH: what its static initializers need of the libraries
 _LINK_FLAGS = ["-shared", "-nodefaultlibs", "-fuse-ld=lld",
                "-Wl,--gc-sections,--no-undefined,--error-limit=0,--no-demangle"]
@@ -1920,9 +1978,9 @@ def preprocessed_digests(lines, edges=None):
     return dict((k, v.hexdigest()) for k, v in digests.items())
 
 
-def source_defines(path):
-    """[(name, -D argument)] of the #define of a source before its last
-    #include."""
+def scanned_defines(path):
+    """[(name, -D argument)] of the #define of a source's text before its last
+    #include, its #if not looked at: more than source_defines() finds."""
     try:
         with open(path, encoding="utf-8", errors="replace") as f:
             text = f.read()
@@ -1941,6 +1999,45 @@ def source_defines(path):
             body = d.group(3).split("//")[0].strip()
             found.append((d.group(1), "-D%s%s=%s" % (d.group(1), d.group(2) or "", body)))
     return found[:last] if last > 0 else []
+
+
+def source_defines(job):
+    """(source, [(name, -D argument)]) of the #define of a source before its
+    last #include as its preprocessor sees them, its #if evaluated: of -E -dD
+    of its compile, the #define of the source itself (an #undef dropping the
+    one before); None if -E fails. Of the macros of `names` only: grep
+    passes the line markers and their #define, the rest of -E stays out of
+    Python."""
+    source, argv, cwd, names = job
+    proc = subprocess.Popen(argv + ["-E", "-dD"], cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    grep = subprocess.Popen(["grep", "-aE", r'^(# [0-9]+ "|#(define|undef) (%s)([ (]|$))' % "|".join(sorted(names))],
+                            stdin=proc.stdout, stdout=subprocess.PIPE, env=dict(os.environ, LC_ALL="C"),
+                            universal_newlines=True, errors="replace")
+    proc.stdout.close()
+    found, last, main, cur = [], 0, None, None
+    for line in grep.stdout:
+        if not line.startswith("#"):
+            continue
+        line = line.rstrip("\n")
+        m = _MARKER_RE.match(line)
+        if m:
+            name = m.group(2)
+            if main is None:
+                main = name                     # the first marker: the source
+            elif cur == main and "1" in m.group(3).split():
+                last = len(found)               # an #include of the source
+            cur = name
+        elif cur == main and line.startswith("#define "):
+            d = _DEFINE_RE.match(line[len("#define "):])
+            if d:
+                found.append((d.group(1), "-D%s%s=%s" % (d.group(1), d.group(2) or "", d.group(3).strip())))
+        elif cur == main and line.startswith("#undef "):
+            name = line[len("#undef "):].strip()
+            found = [f for f in found if f[0] != name]
+            last = min(last, len(found))
+    grep.wait()
+    rc = proc.wait()
+    return source, (found[:last] if rc == 0 else None)
 
 
 def depfile_names(path, paths):
@@ -1985,13 +2082,7 @@ def static_inits(path, paths):
 
     def file_of(n):
         f = fields(fields(n).get("file"))
-        p = os.path.normpath(os.path.join(f.get("directory", ""), f.get("filename", "")))
-        if not os.path.isabs(p):
-            # -ffile-prefix-map (//build/gn/config:path_prefix_map) cuts the
-            # source root and gen/ off the paths of the debug info, not of -E or -MD
-            p = next((q for q in (os.path.join(r, p) for r in (paths.source_root, os.path.join(
-                paths.build_dir, "gen"), paths.build_dir) if r) if os.path.exists(q)), p)
-        return paths.normalize(p)
+        return paths.normalize(os.path.normpath(os.path.join(f.get("directory", ""), f.get("filename", ""))))
 
     out = []
     for name, (sp, locs) in bodies.items():
@@ -2076,15 +2167,15 @@ class Probe(object):
         self.compile = ([base["compiler"]] + o0 + self.defines + includes +
                         ["-w", "-ferror-limit=0", "-O0", "-gline-tables-only", "-S", "-emit-llvm",
                          "-MD", "-MF", self.depfile, self.source, "-o", self.ll])
-        # as //build/gn/pch/global builds it
+        # as //build/gn/pch/global builds it and its files take it
         self.pch = os.path.join(tmp, "probe%d.pch" % key)
-        self.build_pch = self.common + ["-ferror-limit=0", "-x", "c++-header", "-fpch-instantiate-templates",
-                                        "-Xclang", "-fno-pch-timestamp", self.header, "-o", self.pch]
+        self.root = ["-isysroot", os.path.relpath(_ROOT, base["build_dir"]) + "/"]
+        self.build_pch = self.common + pch_only_argv() + self.root + ["-ferror-limit=0", self.header, "-o", self.pch]
         self.macros = self.common + ["-dM", "-E", self.header]
         empty = os.path.join(tmp, "empty.cpp")
         open(empty, "w").close()
         self.obj, self.so = os.path.join(tmp, "link%d.o" % key), os.path.join(tmp, "link%d.so" % key)
-        self.link = [self.common + ["-include-pch", self.pch, "-c", empty, "-o", self.obj],
+        self.link = [self.common + ["-include-pch", self.pch] + self.root + ["-c", empty, "-o", self.obj],
                      [base["compiler"]] + [a for a in flags if a.startswith("--sysroot")] + _LINK_FLAGS +
                      [self.obj, "-o", self.so] + _SYSTEM_LIBS]
         # a file passing with a PCH of these -D and include dirs passes with fewer headers
@@ -2096,8 +2187,8 @@ class Probe(object):
 
     def with_pch(self, t):
         """Checks a file of the build with the PCH: its own command."""
-        return self.base["argv_of"][self.base["objs"][t]] + ["-include-pch", self.pch, "-fsyntax-only",
-                                                             "-ferror-limit=20"]
+        return self.base["argv_of"][self.base["objs"][t]] + ["-include-pch", self.pch] + self.root + [
+            "-fsyntax-only", "-ferror-limit=20"]
 
     def alone(self, t, what):
         """The file without the PCH: -E for the files it parses, -dM for its macros."""
@@ -2131,14 +2222,43 @@ def check_round(args, base, groups, tmp):
     names, objs = base["header_names"], base["objs"]
     header_id = base["header_id"]
     normalize = base["paths"].normalize
-    defines_in = base.setdefault("source_defines", {})
+    # kept with the check cache: the same tree and baseline
+    defines_in = base.setdefault("check_cache", {}).setdefault("source_defines", {})
 
     def tokens_of(name):
         return file_tokens(base, name)
 
-    probes, macros_of = {}, {}
+    probes = dict((g, Probe(base, n, sel, tmp, g)) for g, (n, sel) in groups.items())
+    # the sources whose text has a #define before an #include: -E tells what it defines
+    todo = {}
+    for p in probes.values():
+        for t in p.files:
+            obj = objs[t]
+            src = base["source_of"][obj]
+            if src in defines_in or src in todo:
+                continue
+            scanned = scanned_defines(os.path.join(base["build_dir"], src))
+            if scanned:
+                todo[src] = (src, base["argv_of"][obj], base["build_dir"], set(name for name, _ in scanned))
+            else:
+                defines_in[src] = []
+    if todo:
+        took = time.time()
+        with concurrent.futures.ThreadPoolExecutor(args.check_jobs) as executor:
+            failed = []
+            for src, found in executor.map(source_defines, todo.values()):
+                defines_in[src] = found or []
+                if found is None:
+                    failed.append(src)
+        log("checks: #define before #include in %d sources, -E -dD of them %d s%s" % (
+            len(todo), time.time() - took,
+            ", -E failed for %d, e.g. %s" % (len(failed), failed[0]) if failed else ""))
+        cache_path = state_path(args, base, "checks")
+        if cache_path:
+            save_pickle(cache_path, base["check_cache"])
+    macros_of = {}
     for g, (n, sel) in groups.items():
-        p = probes[g] = Probe(base, n, sel, tmp, g)
+        p = probes[g]
         known = set()
         for h in p.headers:
             known |= tokens_of(names[h])
@@ -2153,9 +2273,7 @@ def check_round(args, base, groups, tmp):
                     values[name][d] += 1
                     having[name].add(base["target_of"][obj])
             src = base["source_of"][obj]
-            if src not in defines_in:
-                defines_in[src] = source_defines(os.path.join(base["build_dir"], src))
-            for name, arg in defines_in[src]:
+            for name, arg in defines_in.get(src, ()):
                 if name in known and name not in common_names:
                     values[name][arg] += 1
                     having[name].add(base["target_of"][obj])
@@ -2371,6 +2489,7 @@ def check_round(args, base, groups, tmp):
             fc["failing"] += 1
             target = base["target_of"][objs[t]]
             h = msg = None
+            hs = []                             # an ambiguous name: the headers of each candidate
             where = []                          # (file, line) of the error and its notes
             for line in err_t.splitlines():
                 md = _DIAG_RE.match(line)
@@ -2382,15 +2501,19 @@ def check_round(args, base, groups, tmp):
                     msg = "%s:%s: %s" % (display(normalize(md.group(1))), md.group(2), md.group(4))
                 where.append((normalize(md.group(1)), int(md.group(2))))
                 hh = header_id.get(normalize(md.group(1)))
-                if h is None and hh in in_pch and not (md.group(3) == "note" and t in base["header_files"][hh]):
-                    h = hh
+                if hh in in_pch and not (md.group(3) == "note" and t in base["header_files"][hh]):
+                    if h is None:
+                        h = hh
+                    if hh not in hs and " is ambiguous" in msg:
+                        hs.append(hh)
             msg = "%s: %s" % (display(normalize(base["source_of"][objs[t]])),
                               msg or (err_t.strip().splitlines() or ["the compiler failed"])[-1])
             if h is None and any(w in msg for w in ("precompiled", "PCH", "AST file")) and r["failed"] is None:
                 r["failed"] = "%s with the PCH: %s" % (target, msg)
             if h is not None:
                 fc["on headers"] += 1
-                r["conflicts"].setdefault(target, []).append((h, msg))
+                for hh in hs or [h]:
+                    r["conflicts"].setdefault(target, []).append((hh, msg))
             else:
                 by_macros.append((g, t, target, msg, where))
         reached = p.reached
@@ -2432,7 +2555,7 @@ def check_round(args, base, groups, tmp):
     return out
 
 
-_CHECKS_VERSION = 3             # of what check_round() finds: older results in the cache are not taken
+_CHECKS_VERSION = 4             # of what check_round() finds: older results in the cache are not taken
 
 
 def check_key(base, p, macros):
@@ -2546,8 +2669,10 @@ def put_on_names(base, probes, failing, out):
     """The files failing with the PCH on no header of it nor on its macros:
     on the headers of the PCH the file does not include alone having a name
     the error quotes (a name of the PCH hiding the one the file means, as
-    'NKikimr::NSchemeShard::NBackup' for NKikimr::NBackup), the qualified
-    names first; on none if more than _NAME_CULPRITS have it."""
+    'NKikimr::NSchemeShard::NBackup' for NKikimr::NBackup; for a
+    specialization after its instantiation the names of its arguments: a
+    header using the type first), the qualified names first; on none if more
+    than _NAME_CULPRITS have it."""
     names, header_files = base["header_names"], base["header_files"]
     texts = {}
 
@@ -2562,7 +2687,9 @@ def put_on_names(base, probes, failing, out):
 
     for g, t, target, msg, where in failing:
         p, r = probes[g], out[g]
-        quoted = [[w for w in q.split("::") if w] for q in _QUOTED_RE.findall(msg.partition(" did you mean ")[0])]
+        spec = _SPECIALIZED_RE.search(msg)
+        quoted = _NAME_RE.findall(spec.group(1)) if spec else _QUOTED_RE.findall(msg.partition(" did you mean ")[0])
+        quoted = [[w for w in q.split("::") if w] for q in quoted]
         hs = []
         for parts in sorted((q for q in quoted if q[-1] not in _NOT_NAMES), key=lambda q: -len(q)):
             cands = [h for h in p.headers if parts[-1] in file_tokens(base, names[h]) and t not in header_files[h]]
@@ -2744,7 +2871,7 @@ def checks(args, base):
     checked = {}                                # group -> signature of what was checked
     # a group made again as one checked: as it went then (a failed one made
     # again from its targets would fail again, round after round)
-    clean, failed = set(), set()                # signatures
+    clean, failed, seen = set(), set(), set()   # signatures: passed, PCH failed, all checked
     no_pch = set()                              # targets failing with any PCH
     no_pch_why = collections.Counter()          # reason -> targets
     inits = {}                                  # header -> where: kept, link_conflicts() checks what they need
@@ -2758,7 +2885,7 @@ def checks(args, base):
         base["check_cache"] = load_pickle(cache_path) or {}
     tmp = tempfile.mkdtemp(prefix="pch_update.")
     try:
-        while pending and rounds < _CHECK_ROUNDS:
+        while pending:
             rounds += 1
             m = base["model"]
             examples = collections.OrderedDict()
@@ -2769,6 +2896,7 @@ def checks(args, base):
                 save_pickle(cache_path, base["check_cache"])
             for g in found:
                 checked[g] = signature(groups[g][1])
+                seen.add(checked[g])
             counts, files = collections.Counter(), collections.Counter()
             leftovers = collections.defaultdict(set)    # class -> targets
             changed = set()
@@ -2874,10 +3002,11 @@ def checks(args, base):
                     leftovers[n] |= sel.members
                     del groups[g]
                     continue
-                # --per-target: the model of the files of the target
-                own = target_model(m, next(iter(members))) if per_target else m
+                # --per-target, --max-group-files: the model of the files of the group
+                own = target_model(m, next(iter(members))) if per_target else \
+                    pool_model(m, members, m["q"]) if m["max_group_files"] else m
                 new = shrunk(own, members, had[g], bans(m, group_bans(members)))
-                kept = new.members if new.value > 0 else set()
+                kept = new.members if new.value >= (_MIN_TARGET_G if per_target else _MIN_GROUP_G) else set()
                 leftovers[n] |= sel.members - kept
                 if kept:
                     groups[g] = (n, new)
@@ -2886,6 +3015,20 @@ def checks(args, base):
             # the same targets and headers as checked: nothing to check again
             changed = set(g for g in changed if g in groups and checked.get(g) != signature(groups[g][1]))
             clean.update(signature(groups[g][1]) for g in found if g in groups and g not in changed)
+            # a round checks only what no round did: the checks end
+            for g in sorted(changed):
+                sig = signature(groups[g][1])
+                if sig not in seen:
+                    continue
+                changed.discard(g)
+                if sig in clean:
+                    checked[g] = sig
+                    counts["made again as passed"] += 1
+                else:
+                    no_pch |= groups[g][1].members
+                    no_pch_why["the same group failed"] += len(groups[g][1].members)
+                    counts["made again as failed"] += 1
+                    del groups[g]
             for n, targets in sorted(leftovers.items()):
                 parts = collections.defaultdict(list)
                 for target in sorted(targets - no_pch):
@@ -2893,13 +3036,11 @@ def checks(args, base):
                 for (hs, _), part in sorted(parts.items(), key=lambda kv: kv[1][0]):
                     if per_target:
                         sels = [sel for sel in (target_selection(m, t, bans(m, hs)) for t in part) if sel]
-                    elif set(part) <= contrib:
-                        sels = [sel for sel in [form_group(m, part, bans(m, hs))] if sel.value > 0]
                     else:
-                        sels = groups_of_class(m, part, bans(m, hs))
+                        sels = class_groups(m, part, bans(m, hs), contrib=set(part) <= contrib)
                     for sel in sels:
                         sig = signature(sel)
-                        if sig in failed:
+                        if sig in failed or sig in seen and sig not in clean:
                             no_pch |= sel.members
                             no_pch_why["the same group failed"] += len(sel.members)
                             counts["made again as failed"] += 1
@@ -2933,12 +3074,10 @@ def checks(args, base):
             pending = changed
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    for g in pending:
-        del groups[g]
     base["found"] = [groups[g] for g in sorted(groups)]
-    print("checked:          %d groups pass after %d rounds, unresolved %d; headers dropped %d, "
+    print("checked:          %d groups pass after %d rounds; headers dropped %d, "
           "targets moved %d, with no PCH %d, with static init %d" % (
-              len(groups), rounds, len(pending), len(set().union(*target_bans.values()) - contrib_bans) if target_bans else 0,
+              len(groups), rounds, len(set().union(*target_bans.values()) - contrib_bans) if target_bans else 0,
               len(moved), len(no_pch), len(inits)))
     for why, k in no_pch_why.most_common(_TOP_FAILURES):
         print("  with no PCH %d: %s" % (k, why))
@@ -2948,13 +3087,12 @@ def checks(args, base):
         print("  targets with a PCH %d of %d before the checks: fewer than %d%%, nothing is written" % (
             len(have), len(had), _MIN_KEPT * 100))
         return False
-    return not pending
+    return True
 
 # =============================================================================
 # writing
 # =============================================================================
 
-_MIN_GROUP_G = 60 * 10**6       # us of G: a group saving less has no PCH
 _GROUPS_GNI = os.path.join(_GLOBAL_DIR, "groups.gni")
 _CONTRIB = "contrib"            # the name of the group of the targets without //util
 _TARGETS_GNI = os.path.join(_PER_TARGET_DIR, "targets.gni")
@@ -2977,6 +3115,30 @@ def label_matches(label, patterns):
         elif pd == d and pn in ("*", name):
             return True
     return False
+
+
+def pch_only_argv():
+    """pch_only_cflags of pch_flags.gni."""
+    argv = [a for _, items in gni_lists(os.path.join(_ROOT, _PCH_FLAGS_GNI), "pch_only_cflags") for a in items]
+    if not argv:
+        raise SystemExit("pch_update: no pch_only_cflags in %s" % _PCH_FLAGS_GNI)
+    return argv
+
+
+def pch_only_flags():
+    """The flags of pch_only_cflags of pch_flags.gni as compile_flags() has
+    them: -x with its language, an -Xclang left out."""
+    argv = pch_only_argv()
+    out, i = set(), 0
+    while i < len(argv):
+        if argv[i] == "-x" and i + 1 < len(argv):
+            out.add("-x " + argv[i + 1])
+            i += 2
+            continue
+        if argv[i] != "-Xclang":
+            out.add(argv[i])
+        i += 1
+    return out
 
 
 def gni_lists(path, key):
@@ -3300,7 +3462,9 @@ _TARGET_PCH_BUILD_RE = re.compile(r"^build obj/%s/(\S+)/[^/\s]*\.([^./\s]+)\.h\.
                                   re.M)
 _TARGET_PCH_INCLUDE_RE = re.compile(r"-include\s+\S*?obj/%s/(\S+)/[^/\s]*\.([^./\s]+)\.h\.h-cc(?:\s|$)"
                                     % re.escape(_PER_TARGET_DIR))
-_PCH_ONLY = ("-x c++-header", "-fpch-instantiate-templates")
+# an -include of the driver: clang takes the PCH only of the first one
+_DRIVER_INCLUDE_RE = re.compile(r"(?<!-Xclang)\s-include\s+(\S+)")
+_PCH_FLAGS_GNI = os.path.join(_GLOBAL_DIR, "pch_flags.gni")
 _TOP_GN_ERROR = 10
 
 
@@ -3361,6 +3525,7 @@ def gn_gen(args, base):
     inputs_bad = {}                             # group -> what of groups.gni its PCH lacks
     if per_target:
         return target_pch_as_written(base, commands, compiled, took)
+    pch_only = pch_only_flags()
     for c in commands:
         command = c["command"]
         if compiler not in command:
@@ -3369,7 +3534,14 @@ def gn_gen(args, base):
         flags, defines, include_dirs = compile_flags(command, compiler)[:3]
         flags = tuple(f for f in flags if f.startswith("-") and f != "-include-pch")
         if m:
-            pch_flags[m.group(1)] = (tuple(sorted(f for f in flags if f not in _PCH_ONLY)), set(defines))
+            own = []
+            for f in flags:
+                if f in pch_only:
+                    if own and own[-1] == "-Xclang":
+                        own.pop()
+                    continue
+                own.append(f)
+            pch_flags[m.group(1)] = (tuple(sorted(own)), set(defines))
             want_d, want_i = base["written_inputs"].get(m.group(1), ([], []))
             lack = ([d for d in want_d if d not in set(defines)] +
                     [d for d in want_i if d not in set(spelled(x) for _, x in include_dirs)])
@@ -3424,6 +3596,7 @@ def target_pch_as_written(base, commands, compiled, took):
     written, the targets of `compiled` compiling theirs."""
     target_of, compiler = base["target_of"], base["compiler"]
     files = {}                                  # obj -> target of its PCH
+    not_first = collections.defaultdict(list)   # target -> (file, the -include before its PCH)
     for c in commands:
         command = c["command"]
         if compiler not in command:
@@ -3432,6 +3605,9 @@ def target_pch_as_written(base, commands, compiled, took):
         if o and o.group(1) in target_of:
             p = _TARGET_PCH_INCLUDE_RE.search(command)
             files[o.group(1)] = "//%s:%s" % p.groups() if p else None
+            first = p and _DRIVER_INCLUDE_RE.search(command, 0, p.start())
+            if first:
+                not_first[target_of[o.group(1)]].append((o.group(1), first.group(1)))
     written = base["written"]
     wrong = collections.defaultdict(list)       # target -> (file, predicted, got)
     no_hook, elsewhere = set(), set()
@@ -3457,14 +3633,17 @@ def target_pch_as_written(base, commands, compiled, took):
         print("  %s: no PCH, its template takes none" % target)
     for target in sorted(set(written) - compiled)[:_TOP_GN_ERROR]:
         print("  %s: no compile of its PCH" % target)
-    return not wrong and not no_hook and set(written) <= compiled
+    for target, bad in sorted(not_first.items())[:_TOP_GN_ERROR]:
+        print("  %s: %d files -include %s before the PCH, clang takes no PCH, e.g. %s" % (
+              target, len(bad), bad[0][1], display(bad[0][0])))
+    return not wrong and not no_hook and not not_first and set(written) <= compiled
 
 
 # =============================================================================
 # the state between runs
 # =============================================================================
 
-_STATE_VERSION = 2              # of what the steps leave in `base`: older states are not taken
+_STATE_VERSION = 3              # of what the steps leave in `base`: older states are not taken
 _KEEP_LOGS = 10
 
 
@@ -3607,10 +3786,11 @@ def run_steps(args, base, steps):
             if cache is not None:
                 base["check_cache"] = cache
             log("%s: saved in %s, %d s" % (name, path, time.time() - took))
-            # the states of the steps before it, of the same options, are of no use now
+            # the states of the steps before it, of the same options, are of no
+            # use now; the ones before the options matter are kept
             for earlier in names[:names.index(name)]:
                 p = state_path(args, base, "after-" + earlier)
-                if p and os.path.exists(p) and (name.endswith(_PER_TARGET_STEP) == earlier.endswith(_PER_TARGET_STEP)):
+                if p and os.path.exists(p) and earlier.endswith(args.mode):
                     os.remove(p)
     return True
 
@@ -3631,6 +3811,12 @@ def main():
     ap.add_argument("--main-ref", default="origin/main", help="main, for the merge base of HEAD")
     ap.add_argument("--per-target", action="store_true",
                     help="a PCH of its own for each target gaining from one, for pch_mode = \"per_target\"")
+    ap.add_argument("--q", type=float, default=0.0,
+                    help="share of the builds from scratch in G: 0 the incremental ones only, 0.1 a CI's (not "
+                         "--per-target, always 0)")
+    ap.add_argument("--max-group-files", type=int, default=500,
+                    help="C++ files of a group at most: a header of its PCH changing rebuilds them; the targets "
+                         "packed by their dirs into parts of that many files, groups formed in each; 0: no limit")
     ap.add_argument("--cache-dir", default=os.path.join(os.environ.get("XDG_CACHE_HOME") or
                                                         os.path.expanduser("~/.cache"), "pch_update"),
                     help="results of earlier runs: the steps done, the checks, the headers compiled alone; the logs")
@@ -3641,7 +3827,8 @@ def main():
     if ok:
         base["state_key"] = state_key(args, base)
         sys.stdout.take()                       # of this run: not a report of the steps
-        mode = _PER_TARGET_STEP if args.per_target else ""
+        # the steps from the groups on are saved for each mode and its options
+        args.mode = mode = _PER_TARGET_STEP if args.per_target else "-q%g-files%d" % (args.q, args.max_group_files)
         ok = False
         try:
             ok = run_steps(args, base, [

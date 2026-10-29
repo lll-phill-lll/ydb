@@ -4,6 +4,7 @@ SRCS(
     result.cpp
     events.cpp
 )
+# gn: interface headers events.h result.h
 
 PEERDIR(
     ydb/core/kqp/query_data

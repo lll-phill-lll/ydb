@@ -296,3 +296,5 @@ private:
 };
 
 }
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NSharedCache::ES3FIFOPageLocation, os, n);

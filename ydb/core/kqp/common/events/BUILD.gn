@@ -4,7 +4,7 @@ library("events") {
     "//ydb/core/grpc_services/base",
     "//ydb/core/grpc_services/cancelation",
     # "//ydb/core/kqp/common",
-    "//ydb/core/kqp/common/compilation",
+    "//ydb/core/kqp/common/compilation:interface",
     "//ydb/core/kqp/common/result_set_format",
     # "//ydb/core/kqp/common/shutdown",
     "//ydb/core/kqp/common/simple",

@@ -12,6 +12,7 @@ PEERDIR(
     ydb/core/actorlib_impl
     ydb/core/base
     ydb/core/kqp/common
+    ydb/core/kqp/common/compilation
     ydb/core/kqp/common/simple
     ydb/core/kqp/counters
     ydb/core/kqp/federated_query

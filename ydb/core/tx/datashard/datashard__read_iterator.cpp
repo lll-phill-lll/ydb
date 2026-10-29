@@ -49,7 +49,7 @@ struct TReadIteratorVectorTop {
     ui32 Column = 0;
     ui32 Limit = 0;
     TString Target;
-    std::unique_ptr<NKMeans::IClusters> KMeans;
+    std::unique_ptr<NKikimr::NKMeans::IClusters> KMeans;
     std::vector<ui32> DistinctColumns;
 
     std::unordered_set<TString> UniqueKeys;
@@ -2685,9 +2685,9 @@ public:
             } else {
                 // Use auto-detect if vector_dimension is 0 (brute force search without index)
                 if (topK.GetSettings().vector_dimension() == 0) {
-                    topState->KMeans = NKMeans::CreateClustersAutoDetect(topK.GetSettings(), topK.GetTargetVector(), 0, error);
+                    topState->KMeans = NKikimr::NKMeans::CreateClustersAutoDetect(topK.GetSettings(), topK.GetTargetVector(), 0, error);
                 } else {
-                    topState->KMeans = NKMeans::CreateClusters(topK.GetSettings(), 0, error);
+                    topState->KMeans = NKikimr::NKMeans::CreateClusters(topK.GetSettings(), 0, error);
                 }
                 if (!topState->KMeans && error.empty()) {
                     error = "CreateClusters failed";

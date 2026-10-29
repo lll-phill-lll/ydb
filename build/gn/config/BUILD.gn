@@ -215,10 +215,14 @@ config("no_undefined") {
 
 # The main key of ydb/core/blobstorage/crypto/default.h, defined by the
 # program: see ydb_default_pdisk_sequence_weak.h. The private config of the
-# libraries that refer to it pulls this one in.
+# libraries that refer to it pulls this one in. The -include goes to cc1: the
+# PCH of a target (pch_mode = "per_target") is taken only from the first
+# -include the driver sees.
 config("ydb_default_pdisk_sequence_weak") {
     cflags = [
+        "-Xclang",
         "-include",
+        "-Xclang",
         rebase_path("ydb_default_pdisk_sequence_weak.h", root_build_dir),
     ]
 }

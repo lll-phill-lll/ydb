@@ -27,9 +27,11 @@ TPDiskMon::TPDiskMon(const TIntrusivePtr<::NMonitoring::TDynamicCounters>& count
     EVisibility visibilityForExtended = extendedPDiskSensors
         ? EVisibility::Public : EVisibility::Private;
 
+#undef COUNTER_INIT
 #define COUNTER_INIT(group, name, derivative) \
     name = group->GetCounter(#name, derivative) \
 
+#undef COUNTER_INIT_IF_EXTENDED
 #define COUNTER_INIT_IF_EXTENDED(group, name, derivative) \
     name = group->GetCounter(#name, derivative, visibilityForExtended) \
 

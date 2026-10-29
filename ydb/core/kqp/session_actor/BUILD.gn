@@ -5,7 +5,7 @@ library("session_actor") {
     # "//ydb/core/control/lib",
     "//ydb/core/kqp/common",
     "//ydb/core/kqp/common/buffer",
-    # "//ydb/core/kqp/common/compilation",
+    # "//ydb/core/kqp/common/compilation:interface",
     # "//ydb/core/kqp/common/simple",
     "//ydb/core/kqp/compile_service",
     "//ydb/core/kqp/counters",
@@ -27,6 +27,7 @@ library("session_actor") {
     # "//ydb/core/actorlib_impl",
     "//ydb/core/docapi",  # peerdir only
     # "//ydb/core/engine",
+    "//ydb/core/kqp/common/compilation",  # peerdir only
     # "//ydb/core/kqp/common/events",
     # "//ydb/core/kqp/executer_actor:shards_resolver",
     "//ydb/core/kqp/gateway",

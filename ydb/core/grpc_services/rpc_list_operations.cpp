@@ -34,12 +34,13 @@ using namespace NSchemeShard;
 using namespace NKikimrIssues;
 using namespace NOperationId;
 using namespace Ydb;
+using NOperationId::TOperationId;
 
 using TEvListOperationsRequest = TGrpcRequestNoOperationCall<Ydb::Operations::ListOperationsRequest,
     Ydb::Operations::ListOperationsResponse>;
 
 class TListOperationsRPC
-    : public TRpcOperationRequestActor<TListOperationsRPC, TEvListOperationsRequest>
+    : public TRpcOperationRequestActorBase<TListOperationsRPC, TEvListOperationsRequest>
     , public TExportConv
     , public TBackupCollectionRestoreConv
 {
@@ -428,7 +429,7 @@ class TListOperationsRPC
     }
 
 public:
-    using TRpcOperationRequestActor::TRpcOperationRequestActor;
+    using TRpcOperationRequestActorBase::TRpcOperationRequestActorBase;
 
     void Bootstrap() {
         Become(&TListOperationsRPC::StateWait);
@@ -466,7 +467,7 @@ public:
         if (ParseKind(GetProtoRequest()->kind()) == TOperationId::ANALYZE) {
             HandleAnalyzeNavigateResult(ev);
         } else {
-            TRpcOperationRequestActor::Handle(ev);
+            TRpcOperationRequestActorBase::Handle(ev);
         }
     }
 
@@ -474,7 +475,7 @@ public:
         // AnalyzePipeClient is opened only on the ANALYZE path. Closing the default actor id is a
         // no-op, so this is safe for every operation kind.
         NTabletPipe::CloseAndForgetClient(SelfId(), AnalyzePipeClient);
-        TRpcOperationRequestActor::PassAway();
+        TRpcOperationRequestActorBase::PassAway();
     }
 
     STATEFN(StateWait) {

@@ -118,3 +118,5 @@ using TUserDataTable = THashMap<TUserDataKey, TUserDataBlock, TUserDataKey::THas
 using TTokenResolver = std::function<TString(const TString&, const TString&)>;
 
 } // namespace NYql
+
+Y_DECLARE_OUT_SPEC(, NYql::TUserDataKey::EDataType, os, n);

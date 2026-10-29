@@ -33,7 +33,7 @@ bool TOlapIndexSchema::ApplyUpdate(const TOlapSchema& currentSchema, const TOlap
         errors.AddError("cannot modify index: " + conclusion.GetErrorMessage());
         return false;
     }
-    IndexMeta = NBackgroundTasks::TInterfaceProtoContainer<NOlap::NIndexes::IIndexMeta>(object);
+    IndexMeta = NBackgroundTasks::TInterfaceProtoContainer<NKikimr::NOlap::NIndexes::IIndexMeta>(object);
     return true;
 }
 

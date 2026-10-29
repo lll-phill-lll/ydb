@@ -19,7 +19,7 @@ library("testlib") {
     "//ydb/core/driver_lib/run:config",
     # "//ydb/core/engine/minikql",
     # "//ydb/core/fq/libs/shared_resources/interface",
-    # "//ydb/core/http_proxy",
+    # "//ydb/core/http_proxy:auth_factory",
     "//ydb/core/kesus/tablet",
     "//ydb/core/keyvalue",
     # "//ydb/core/kqp/common",
@@ -89,6 +89,7 @@ library("testlib") {
     # "//ydb/core/grpc_services/base",
     # "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/health_check",
+    # "//ydb/core/http_proxy",  # peerdir only
     "//ydb/core/kafka_proxy",
     "//ydb/core/kesus/proxy",
     "//ydb/core/kqp",  # peerdir only

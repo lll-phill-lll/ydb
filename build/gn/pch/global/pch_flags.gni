@@ -1,0 +1,12 @@
+# The flags of a precompiled header and not of its files: a header compiled
+# as one, reproducible, relocatable against the source root.
+# //build/gn/scripts/pch_update.py leaves them out comparing the flags of a
+# PCH with the ones of its files.
+pch_only_cflags = [
+  "-x",
+  "c++-header",
+  "-fpch-instantiate-templates",
+  "-relocatable-pch",
+  "-Xclang",
+  "-fno-pch-timestamp",
+]

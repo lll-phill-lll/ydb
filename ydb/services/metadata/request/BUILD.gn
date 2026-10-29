@@ -8,7 +8,7 @@ library("config") {
   sources = [ "config.cpp" ]
 }
 
-library("request") {
+group("interface") {
   public_deps = [
     ":config",
     "//ydb/core/base",
@@ -21,9 +21,21 @@ library("request") {
     "//ydb/public/api/protos",
     # "//yql/essentials/public/issue",
   ]
+}
+
+library("request") {
+  public_deps = [
+    ":config",
+    ":interface",
+  ]
 
   deps = [
+    "//ydb/core/base",  # peerdir only
     "//ydb/core/grpc_services",  # peerdir only
+    "//ydb/core/grpc_services/base",  # peerdir only
+    "//ydb/core/grpc_services/local_rpc",  # peerdir only
+    "//ydb/library/actors/core",  # peerdir only
+    "//ydb/public/api/protos",  # peerdir only
   ]
 
   sources = [

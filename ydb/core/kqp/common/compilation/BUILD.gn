@@ -1,4 +1,20 @@
 library("compilation") {
+  public_deps = [ ":interface" ]
+
+  deps = [
+    "//ydb/core/kqp/common/simple",  # peerdir only
+    # "//ydb/core/kqp/query_data",  # peerdir only
+    # "//ydb/core/util",
+    "//yql/essentials/public/issue",  # peerdir only
+  ]
+
+  sources = [
+    "events.cpp",
+    "result.cpp",
+  ]
+}
+
+group("interface") {
   public_deps = [
     # "//library/cpp/lwtrace",
     # "//ydb/core/kqp/common",
@@ -9,15 +25,5 @@ library("compilation") {
     # "//ydb/library/actors/core",
     # "//yql/essentials/ast",
     "//yql/essentials/public/issue",
-  ]
-
-  deps = [
-    # "//ydb/core/kqp/query_data",  # peerdir only
-    # "//ydb/core/util",
-  ]
-
-  sources = [
-    "events.cpp",
-    "result.cpp",
   ]
 }

@@ -17,6 +17,7 @@ PEERDIR(
     yql/essentials/providers/common/dq
     yql/essentials/providers/common/provider
     yql/essentials/providers/common/schema/mkql
+    yql/essentials/providers/common/schema/expr
     ydb/library/yql/providers/function/expr_nodes
     ydb/library/yql/providers/function/common
     ydb/library/yql/providers/function/gateway

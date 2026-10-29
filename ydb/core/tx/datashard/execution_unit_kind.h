@@ -86,3 +86,5 @@ enum class EExecutionUnitKind: ui32 {
 
 } // namespace NDataShard
 } // namespace NKikimr
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NDataShard::EExecutionUnitKind, os, n);

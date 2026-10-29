@@ -196,7 +196,17 @@ public:
     }
 };
 
-EYtSettingTypes operator|(EYtSettingType left, EYtSettingType right);
+inline EYtSettingTypes operator|(EYtSettingTypes left, const EYtSettingTypes& right) {
+    return left |= right;
+}
+
+inline EYtSettingTypes operator&(EYtSettingTypes left, const EYtSettingTypes& right) {
+    return left &= right;
+}
+
+inline EYtSettingTypes operator|(EYtSettingType left, EYtSettingType right) {
+    return EYtSettingTypes(left) | EYtSettingTypes(right);
+}
 
 const auto DqReadSupportedSettings = EYtSettingType::SysColumns | EYtSettingType::Sample | EYtSettingType::Unordered | EYtSettingType::NonUnique | EYtSettingType::KeyFilter2;
 const auto DqOpSupportedSettings = EYtSettingType::Ordered | EYtSettingType::Limit | EYtSettingType::SortLimitBy | EYtSettingType::SortBy |
@@ -264,6 +274,9 @@ ui32 GetMinChildrenForIndexedKeyFilter(EYtSettingType type);
 void YtWriteStmtContext(std::string_view ctxName, NJsonWriter::TBuf& json);
 
 } // NYql
+
+template <>
+NYql::EYtSettingType FromStringImpl<NYql::EYtSettingType>(const char* data, size_t len);
 
 
 template <>

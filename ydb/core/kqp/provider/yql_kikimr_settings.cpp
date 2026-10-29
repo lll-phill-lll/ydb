@@ -41,7 +41,7 @@ ui64 ParseEnableSpillingNodes(const TString &v) {
     return res;
 }
 
-static inline bool GetFlagValue(const TMaybe<bool>& flag) {
+static inline bool GetBoolFlagValue(const TMaybe<bool>& flag) {
     return flag ? flag.GetRef() : false;
 }
 
@@ -225,7 +225,7 @@ TKikimrConfiguration::TKikimrConfiguration() {
 }
 
 bool TKikimrSettings::HasAllowKqpUnsafeCommit() const {
-    return GetFlagValue(_KqpAllowUnsafeCommit.Get());
+    return GetBoolFlagValue(_KqpAllowUnsafeCommit.Get());
 }
 
 bool TKikimrSettings::HasDefaultCluster() const {
@@ -233,31 +233,31 @@ bool TKikimrSettings::HasDefaultCluster() const {
 }
 
 bool TKikimrSettings::SystemColumnsEnabled() const {
-    return GetFlagValue(EnableSystemColumns.Get());
+    return GetBoolFlagValue(EnableSystemColumns.Get());
 }
 
 bool TKikimrSettings::SpillingEnabled() const {
-    return GetFlagValue(_KqpEnableSpilling.Get());
+    return GetBoolFlagValue(_KqpEnableSpilling.Get());
 }
 
 bool TKikimrSettings::OrderPreservingLookupJoinEnabled() const {
-    return GetFlagValue(EnableOrderPreservingLookupJoin.Get());
+    return GetBoolFlagValue(EnableOrderPreservingLookupJoin.Get());
 }
 
 bool TKikimrSettings::DisableLlvmForUdfStages() const {
-    return GetFlagValue(_KqpDisableLlvmForUdfStages.Get());
+    return GetBoolFlagValue(_KqpDisableLlvmForUdfStages.Get());
 }
 
 bool TKikimrSettings::HasOptDisableTopSort() const {
-    return GetFlagValue(OptDisableTopSort.Get());
+    return GetBoolFlagValue(OptDisableTopSort.Get());
 }
 
 bool TKikimrSettings::HasOptDisableSqlInToJoin() const {
-    return GetFlagValue(OptDisableSqlInToJoin.Get());
+    return GetBoolFlagValue(OptDisableSqlInToJoin.Get());
 }
 
 bool TKikimrSettings::HasOptEnableInplaceUpdate() const {
-    return GetFlagValue(OptEnableInplaceUpdate.Get());
+    return GetBoolFlagValue(OptEnableInplaceUpdate.Get());
 }
 
 bool TKikimrSettings::HasOptEnableOlapPushdown() const {
@@ -269,7 +269,7 @@ bool TKikimrSettings::HasOptEnableOlapProvideComputeSharding() const {
 }
 
 bool TKikimrSettings::HasOptUseFinalizeByKey() const {
-    return GetFlagValue(OptUseFinalizeByKey.Get().GetOrElse(true)) != EOptionalFlag::Disabled;
+    return GetBoolFlagValue(OptUseFinalizeByKey.Get().GetOrElse(true)) != EOptionalFlag::Disabled;
 }
 
 bool TKikimrSettings::HasMaxSequentialReadsInFlight() const {
@@ -394,7 +394,7 @@ bool TKikimrConfiguration::GetUseDqHashAggregate() const {
 }
 
 bool TKikimrConfiguration::GetDqHashCombineExportTypeInfo() const {
-    return GetFlagValue(DqHashCombineExportTypeInfo.Get());
+    return GetBoolFlagValue(DqHashCombineExportTypeInfo.Get());
 }
 
 bool TKikimrConfiguration::GetDqHashOperatorsUseBlocks() const {

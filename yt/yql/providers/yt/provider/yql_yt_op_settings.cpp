@@ -1469,18 +1469,6 @@ ui32 GetMinChildrenForIndexedKeyFilter(EYtSettingType type) {
     return 3u;
 }
 
-EYtSettingTypes operator|(EYtSettingTypes left, const EYtSettingTypes& right) {
-    return left |= right;
-}
-
-EYtSettingTypes operator&(EYtSettingTypes left, const EYtSettingTypes& right) {
-    return left &= right;
-}
-
-EYtSettingTypes operator|(EYtSettingType left, EYtSettingType right) {
-    return EYtSettingTypes(left) | EYtSettingTypes(right);
-}
-
 void YtWriteHint(std::string_view name, NJsonWriter::TBuf& json) {
     json.BeginObject();
     json.WriteKey("name");

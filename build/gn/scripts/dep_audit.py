@@ -22,8 +22,9 @@ Model
   D(R)    declared closure of a root executable R over gn deps (public included)
   N(R)    needed: objects reachable from R's objects and from always-linked
           objects (GLOBAL SRCS of ya.make, YQL UDF modules, *_resources.cpp) of
-          D(R), over strong-symbol references (U/w/v -> T/D/B/R/C/G/S/i),
-          providers restricted to D(R); a target is needed if one of its
+          D(R), over symbol references (U/w/v -> T/D/B/R/C/G/S/i; a symbol
+          with no strong def -> one of its weak defs W/V/u, e.g. an explicit
+          template instantiation), providers restricted to D(R); a target is needed if one of its
           objects is; a target without objects (action, group, header-only) is
           needed if a needed target depends on it or uses headers of its dir;
           the deps of a needed action or tool executable are needed whole
@@ -33,7 +34,7 @@ Model
           unneeded while its immediate dominator's is not: dropping v drops
           the whole subtree; the only way in is v's in-edges ("entry edges")
   Carry   weight of a head's subtree
-  Effort  of an edge P->Y: |U_sym| + |U_hdr| -- strong symbols of Y referenced
+  Effort  of an edge P->Y: |U_sym| + |U_hdr| -- symbols of Y referenced
           by P's objects, headers of Y's dir in P's TUs (.ninja_deps)
   Score   Carry summed over roots / (1 + Effort): build seconds per edit
 """
@@ -44,7 +45,6 @@ import collections
 import fnmatch
 import json
 import os
-import pickle
 import re
 import shlex
 import struct
@@ -56,6 +56,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pch_update import running_ninja  # noqa: E402
+from nm_index import demangle, load_symbols, sym_hash  # noqa: E402
 
 _ROOT = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
 _STATUS_RE = re.compile(r"^\[(\d+)/(\d+)\] (.*)$")
@@ -262,105 +263,11 @@ def load_ninja_log(cfg):
     return dur
 
 
-# ---- symbols: llvm-nm ------------------------------------------------------------
+# ---- targets ------------------------------------------------------------------------
 
 HELPER_SUFFIXES = ("_enum_objs", "_link_slot_interfaces", "_link_slot_check", "_resources")
 PCH_PREFIX = "//build/gn/pch/global:"
 BUILD_TIME_TYPES = ("action", "action_foreach", "copy", "generated_file")
-STRONG = set("TDBRCGSi")
-REFS = set("Uwv")
-
-
-def nm_batch(args):
-    nm, out, paths = args
-    r = subprocess.run([nm, "-A", "-P", "--no-sort", "-g"] + paths, cwd=out,
-                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    res = {p: ([], []) for p in paths}
-    for line in r.stdout.decode("utf-8", "replace").splitlines():
-        head, sep, rest = line.partition(": ")
-        if not sep:
-            continue
-        e = res.get(head)
-        if e is None:
-            continue
-        f = rest.split(" ")
-        if len(f) < 2:
-            continue
-        ty = f[1]
-        if ty in STRONG:
-            e[0].append(f[0])
-        elif ty in REFS:
-            e[1].append(f[0])
-    return res
-
-
-class SymTab:
-    def __init__(self):
-        self.ids, self.names = {}, []
-
-    def id(self, s):
-        i = self.ids.get(s)
-        if i is None:
-            i = self.ids[s] = len(self.names)
-            self.names.append(s)
-        return i
-
-
-def load_symbols(cfg, objs, skip, report, jobs, reuse):
-    """objs: [path]; skip: indexes not to read (host toolchain). Returns (symtab, defs[oi], refs[oi]) as arrays of sym ids.
-    Cache: nm_cache.pickle in report, keyed by (mtime_ns, size)."""
-    cache_path = os.path.join(report, "nm_cache.pickle")
-    st = SymTab()
-    cache = {}
-    if reuse and os.path.exists(cache_path):
-        with open(cache_path, "rb") as f:
-            c = pickle.load(f)
-        st.names = c["names"]
-        st.ids = {s: i for i, s in enumerate(st.names)}
-        cache = c["objs"]
-    stats = {}
-    todo = []
-    for i, p in enumerate(objs):
-        if i in skip:
-            stats[p] = None
-            continue
-        try:
-            s = os.stat(os.path.join(cfg.out, p))
-            stats[p] = (s.st_mtime_ns, s.st_size)
-        except OSError:
-            stats[p] = None
-            continue
-        e = cache.get(p)
-        if e is None or e[0] != stats[p]:
-            todo.append(p)
-    log("nm: %d objects, %d cached" % (len(objs), len(objs) - len(todo)))
-    batches = [(cfg.nm, cfg.out, todo[i:i + 100]) for i in range(0, len(todo), 100)]
-    done = 0
-    with ProcessPoolExecutor(max_workers=jobs) as ex:
-        for res in ex.map(nm_batch, batches):
-            for p, (d, r) in res.items():
-                cache[p] = (stats[p], array.array("I", (st.id(s) for s in d)).tobytes(),
-                            array.array("I", (st.id(s) for s in r)).tobytes())
-            done += 1
-            if done % 40 == 0:
-                log("nm: %d / %d batches" % (done, len(batches)))
-    with open(cache_path + ".tmp", "wb") as f:
-        pickle.dump({"names": st.names, "objs": cache}, f, protocol=4)
-    os.replace(cache_path + ".tmp", cache_path)
-    defs, refs = [], []
-    for p in objs:
-        e = cache.get(p)
-        if e is None or stats.get(p) is None:
-            defs.append(array.array("I"))
-            refs.append(array.array("I"))
-            continue
-        a, b = array.array("I"), array.array("I")
-        a.frombytes(e[1])
-        b.frombytes(e[2])
-        defs.append(a)
-        refs.append(b)
-    log("nm: %d symbols" % len(st.names))
-    return st, defs, refs
 
 
 # ---- headers: .ninja_deps ----------------------------------------------------------
@@ -502,18 +409,29 @@ def analyze_root(ri):
     D = seen
     # needed objects
     obj_t, obj_refs, troots = g["obj_target"], g["obj_refs"], g["target_root_objs"]
+    obj_wrefs, wprov = g["obj_wrefs"], g["wprov"]
     tobjs = g["target_objs"]
     start = list(tobjs[ri])
     for v in D:
         start.extend(troots[v])
     nobj = set(start)
     stack = list(nobj)
-    while stack:
-        o = stack.pop()
-        for p in obj_refs[o]:
-            if p not in nobj and obj_t[p] in D:
-                nobj.add(p)
-                stack.append(p)
+    pending = []   # references to weak defs: one of the defining objects is enough
+    while stack or pending:
+        while stack:
+            o = stack.pop()
+            for p in obj_refs[o]:
+                if p not in nobj and obj_t[p] in D:
+                    nobj.add(p)
+                    stack.append(p)
+            pending.extend(obj_wrefs[o])
+        # after the strong closure, so that a def already needed is preferred
+        for s in pending:
+            cand = [q for q in wprov[s] if obj_t[q] in D]
+            if cand and not any(q in nobj for q in cand):
+                nobj.add(cand[0])
+                stack.append(cand[0])
+        pending = []
     needed = {obj_t[o] for o in nobj}
     needed.add(ri)
     used_dirs = set()
@@ -656,20 +574,6 @@ def min_cut(ri, sinks):
 
 # ---- reporting helpers --------------------------------------------------------------
 
-def demangle(cfg, names):
-    if not names:
-        return {}
-    try:
-        r = subprocess.run([cfg.cxxfilt], input="\n".join(names), stdout=subprocess.PIPE,
-                           universal_newlines=True)
-        outl = r.stdout.splitlines()
-        if len(outl) == len(names):
-            return dict(zip(names, outl))
-    except OSError:
-        pass
-    return {n: n for n in names}
-
-
 def fmt_s(x):
     if x >= 3600:
         return "%.1fh" % (x / 3600)
@@ -782,8 +686,9 @@ def main():
         fmt_s(sum(weight)), len(cxx), len(obj_paths), 100 * fast_share))
 
     # symbols
-    st, defs, refs = load_symbols(cfg, obj_paths, {i for i, t in enumerate(obj_target) if T[t].host},
-                                  report, args.jobs, args.reuse)
+    st, defs, refs, weak = load_symbols(cfg.nm, cfg.out, obj_paths,
+                                        {i for i, t in enumerate(obj_target) if T[t].host},
+                                        os.path.join(report, "nm_cache.pickle"), args.jobs, args.reuse, log=log)
     prov = {}
     multi = {}
     for oi, a in enumerate(defs):
@@ -795,19 +700,49 @@ def main():
                 prov[s] = oi
             else:
                 multi.setdefault(s, [p]).append(oi)
-    obj_refs = []
+    # a reference no strong def resolves goes to the weak defs of it (an explicit
+    # template instantiation is weak): the linker takes any one of them
+    need_h = {}
+    for oi, a in enumerate(refs):
+        if not T[obj_target[oi]].host:
+            for s in a:
+                if s not in prov:
+                    need_h[sym_hash(st.names[s])] = s
+    wprov = {}
+    for oi, a in enumerate(weak):
+        if T[obj_target[oi]].host:
+            continue
+        for h in a:
+            s = need_h.get(h)
+            if s is not None:
+                wprov.setdefault(s, []).append(oi)
+    del need_h, weak
+    wprov = {s: array.array("I", v) for s, v in wprov.items()}
+    obj_refs, obj_wrefs = [], []
     usage_sym = [dict() for _ in T]  # A -> {B: set(sym)}
     obj_sym_targets = []
-    nref = nres = 0
+    nref = nres = nweak = 0
     for oi, a in enumerate(refs):
         ta = obj_target[oi]
-        ps, tg = set(), set()
+        ps, ws, tg = set(), [], set()
         if not T[ta].host:
             ua = usage_sym[ta]
+            direct = set(T[ta].deps)
             for s in a:
                 nref += 1
                 p = prov.get(s)
                 if p is None:
+                    cand = wprov.get(s)
+                    if cand is None:
+                        continue
+                    nres += 1
+                    nweak += 1
+                    ws.append(s)
+                    tbs = {obj_target[q] for q in cand} - {ta}
+                    # many weak defs: evidence only for the direct deps
+                    for tb in (tbs if len(tbs) <= 3 else tbs & direct):
+                        tg.add(tb)
+                        ua.setdefault(tb, set()).add(s)
                     continue
                 nres += 1
                 cand = multi.get(s, (p,))
@@ -820,10 +755,12 @@ def main():
                         tg.add(tb)
                         ua.setdefault(tb, set()).add(s)
         obj_refs.append(array.array("I", sorted(ps)))
+        obj_wrefs.append(array.array("I", ws))
         obj_sym_targets.append(tg)
     del defs, refs
-    log("symbols: %d strong defs, %d defined in several objects; refs %d, resolved %d (%.0f%%)" % (
-        len(prov), len(multi), nref, nres, 100.0 * nres / max(1, nref)))
+    log("symbols: %d strong defs, %d defined in several objects, %d with weak defs only; "
+        "refs %d, resolved %d (%.0f%%), to weak defs %d" % (
+            len(prov), len(multi), len(wprov), nref, nres, 100.0 * nres / max(1, nref), nweak))
 
     # headers
     mods = Modules(cfg)
@@ -909,7 +846,8 @@ def main():
         len(roots), sum(1 for t in roots if t.testonly), sum(1 for t in roots if not t.testonly)))
 
     G.update(targets=T, deps=[t.deps for t in T], rdeps=[t.rdeps for t in T],
-             obj_target=obj_target, obj_refs=obj_refs, target_objs=target_objs,
+             obj_target=obj_target, obj_refs=obj_refs, obj_wrefs=obj_wrefs, wprov=wprov,
+             target_objs=target_objs,
              target_root_objs=target_root_objs, hdr_dirs=hdr_dirs, hdr_sets=hdr_sets,
              usage_sym=usage_sym, weight=weight, obj_weight=obj_weight, link_weight=link_weight,
              is_so=is_so, min_carry=args.min_carry)
@@ -962,7 +900,7 @@ def main():
             if len(ss) <= 3:
                 want.update(ss)
     name_of = st.names
-    dm = demangle(cfg, sorted({name_of[s] for s in want}))
+    dm = demangle(cfg.cxxfilt, sorted({name_of[s] for s in want}))
 
     def sample(p, y, k=2):
         ss = sorted(usage_sym[p].get(y, ()))[:k]
@@ -1091,8 +1029,8 @@ def main():
     S.extend("  warning: " + w for w in warnings)
     S.append("  targets %d, objects %d, executables %d (roots analyzed %d)" % (
         len(T), len(obj_paths), len(exes), len(roots)))
-    S.append("  symbols resolved %.0f%% of refs; defined in several objects: %d" % (
-        100.0 * nres / max(1, nref), len(multi)))
+    S.append("  symbols resolved %.0f%% of refs (%d to weak defs); defined in several objects: %d" % (
+        100.0 * nres / max(1, nref), nweak, len(multi)))
     S.append("  headers: %s" % ("PCH subtracted -> hdr counts are a lower bound, 'dead?' edges may use headers"
                                 if hdr_lower_bound else "clean (no PCH in depfiles)"))
     S.append("  weights: total %s; %.0f%% of compiles under 0.2 s%s" % (

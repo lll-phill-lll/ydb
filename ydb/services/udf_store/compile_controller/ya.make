@@ -29,7 +29,7 @@ PEERDIR(
     ydb/library/yql/public/ydb_issue
     ydb/library/actors/core
     ydb/services/metadata
-    ydb/services/metadata/request
+    ydb/services/metadata/request  # gn: :interface :config
     ydb/services/udf_store
     ydb/services/udf_store/compile_controller/protos
 )

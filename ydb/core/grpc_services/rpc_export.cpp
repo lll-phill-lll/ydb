@@ -150,7 +150,7 @@ struct TExportTraits<TEvExportToYtRequest> {
 };
 
 template <typename TDerived, typename TEvRequest>
-class TExportRPC: public TRpcOperationRequestActor<TDerived, TEvRequest, true>, public TExportConv {
+class TExportRPC: public TRpcOperationRequestActorBase<TDerived, TEvRequest, true>, public TExportConv {
     using TTraits = TExportTraits<TEvRequest>;
     static constexpr bool IsS3Export = std::is_same_v<TEvRequest, TEvExportToS3Request>;
     static constexpr bool IsFsExport = std::is_same_v<TEvRequest, TEvExportToFsRequest>;
@@ -574,7 +574,7 @@ class TExportRPC: public TRpcOperationRequestActor<TDerived, TEvRequest, true>, 
     }
 
 public:
-    using TRpcOperationRequestActor<TDerived, TEvRequest, true>::TRpcOperationRequestActor;
+    using TRpcOperationRequestActorBase<TDerived, TEvRequest, true>::TRpcOperationRequestActorBase;
 
     void Bootstrap() {
         const auto& request = *this->GetProtoRequest();

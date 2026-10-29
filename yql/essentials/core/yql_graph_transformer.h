@@ -488,6 +488,8 @@ inline std::pair<IGraphTransformer::TStatus, TAsyncTransformCallbackFuture> Sync
 using TSyncMap = std::unordered_map<TExprNode::TPtr, ui64, TExprNode::TPtrHash>;
 } // namespace NYql
 
+Y_DECLARE_OUT_SPEC(, NYql::IGraphTransformer::TStatus::ELevel, out, value);
+
 template <>
 inline void Out<NYql::IGraphTransformer::TStatus>(
     IOutputStream& out, const NYql::IGraphTransformer::TStatus& value)

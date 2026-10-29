@@ -492,18 +492,6 @@ namespace NKikimr {
 } // NKikimr
 
 template<>
-inline void Out<NKikimr::NBackpressure::TMessageId>(IOutputStream& o,
-                                                    const NKikimr::NBackpressure::TMessageId &x) {
-    return x.Out(o);
-}
-
-template<>
-inline void Out<NKikimr::NBackpressure::TQueueClientId>(IOutputStream& o,
-                                                        const NKikimr::NBackpressure::TQueueClientId &x) {
-    return x.Output(o);
-}
-
-template<>
 struct THash<NKikimr::NBackpressure::TQueueClientId> {
     size_t operator ()(const NKikimr::NBackpressure::TQueueClientId& clientId) const {
         return clientId.Hash();

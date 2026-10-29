@@ -71,7 +71,7 @@ PEERDIR(
     ydb/core/grpc_services
     ydb/core/grpc_services/base
     ydb/core/health_check
-    ydb/core/http_proxy
+    ydb/core/http_proxy  # gn: :auth_factory
     ydb/core/jaeger_tracing
     ydb/core/kafka_proxy
     ydb/core/kesus/proxy

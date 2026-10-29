@@ -713,11 +713,11 @@ private:
         return event;
     }
 
-    NMonitoring::TDynamicCounterPtr GetWorkloadManagerCounters(ui32 nodeIndex) const {
+    ::NMonitoring::TDynamicCounterPtr GetWorkloadManagerCounters(ui32 nodeIndex) const {
         return NWorkloadManager::GetWorkloadManagerCounters(GetRuntime()->GetAppData(nodeIndex).Counters);
     }
 
-    static void CheckCommonCounters(NMonitoring::TDynamicCounterPtr subgroup, const TString& description) {
+    static void CheckCommonCounters(::NMonitoring::TDynamicCounterPtr subgroup, const TString& description) {
         UNIT_ASSERT_VALUES_EQUAL_C(subgroup->GetCounter("LocalInFly", false)->Val(), 0, description);
         UNIT_ASSERT_VALUES_EQUAL_C(subgroup->GetCounter("LocalDelayedRequests", false)->Val(), 0, description);
         UNIT_ASSERT_VALUES_EQUAL_C(subgroup->GetCounter("ContinueOverloaded", true)->Val(), 0, description);
@@ -726,7 +726,7 @@ private:
         UNIT_ASSERT_VALUES_EQUAL_C(subgroup->GetCounter("Cancelled", true)->Val(), 0, description);
     }
 
-    static void CheckTableCounters(NMonitoring::TDynamicCounterPtr subgroup, const TString& description) {
+    static void CheckTableCounters(::NMonitoring::TDynamicCounterPtr subgroup, const TString& description) {
         UNIT_ASSERT_VALUES_EQUAL_C(subgroup->GetCounter("PendingRequestsCount", false)->Val(), 0, description);
         UNIT_ASSERT_VALUES_EQUAL_C(subgroup->GetCounter("FinishingRequestsCount", false)->Val(), 0, description);
 

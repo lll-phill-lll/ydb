@@ -19,7 +19,7 @@ using namespace Ydb;
 
 template <class TIn, class TOut>
 class TBackupCollectionsRPC
-    : public TRpcOperationRequestActor<
+    : public TRpcOperationRequestActorBase<
         TBackupCollectionsRPC<TIn, TOut>,
         TGrpcRequestOperationCall<TIn, TOut>,
         true
@@ -27,11 +27,11 @@ class TBackupCollectionsRPC
 {
 public:
     using TSelf = TBackupCollectionsRPC<TIn, TOut>;
-    using TRpcOperationRequestActor<
+    using TRpcOperationRequestActorBase<
         TBackupCollectionsRPC<TIn, TOut>,
         TGrpcRequestOperationCall<TIn, TOut>,
         true
-    >::TRpcOperationRequestActor;
+    >::TRpcOperationRequestActorBase;
 
     TStringBuf GetLogPrefix() const override {
         return "[Backup]";

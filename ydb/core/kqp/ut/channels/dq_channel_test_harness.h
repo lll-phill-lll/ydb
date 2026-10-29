@@ -1237,13 +1237,13 @@ struct TSessionTest : public TLoadTest {
     // the node's interconnect subscriptions made by actors whose activity name contains the given part; the mock
     // has no such sensor
     i64 GetInterconnectSubscribers(ui32 nodeIndex, TStringBuf activity) {
-        std::function<i64(const NMonitoring::TDynamicCounters&, bool)> sum = [&](const NMonitoring::TDynamicCounters& group, bool bySubscriber) {
+        std::function<i64(const ::NMonitoring::TDynamicCounters&, bool)> sum = [&](const ::NMonitoring::TDynamicCounters& group, bool bySubscriber) {
             i64 result = 0;
             for (const auto& [id, child] : group.ReadSnapshot()) {
-                if (auto subgroup = dynamic_cast<const NMonitoring::TDynamicCounters*>(child.Get())) {
+                if (auto subgroup = dynamic_cast<const ::NMonitoring::TDynamicCounters*>(child.Get())) {
                     result += sum(*subgroup, id.LabelName == "sensor" && id.LabelValue == "InterconnectSessionSubscribersByActivity");
                 } else if (bySubscriber && id.LabelName == "activity" && id.LabelValue.Contains(activity)) {
-                    result += static_cast<const NMonitoring::TCounterForPtr*>(child.Get())->Val();
+                    result += static_cast<const ::NMonitoring::TCounterForPtr*>(child.Get())->Val();
                 }
             }
             return result;

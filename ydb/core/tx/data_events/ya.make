@@ -19,9 +19,7 @@ PEERDIR(
     library/cpp/lwtrace
 
     # Temporary fix dep ydb/core/tx/columnshard
-    ydb/core/tablet_flat/protos
     ydb/core/tablet_flat
-    ydb/core/blobstorage/vdisk/protos
     #
 )
 

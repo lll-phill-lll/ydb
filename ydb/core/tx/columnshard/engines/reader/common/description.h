@@ -221,3 +221,5 @@ public:
 };
 
 }   // namespace NKikimr::NOlap::NReader
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NOlap::NReader::ERequestSorting, os, n);

@@ -526,3 +526,7 @@ inline NKikimr::NBsController::TPDiskId Max<NKikimr::NBsController::TPDiskId>() 
 Y_DECLARE_OUT_SPEC(inline, NKikimr::NBsController::TPDiskId, str, value) {
     str << value.ToString();
 }
+
+Y_DECLARE_OUT_SPEC(inline, NKikimr::NBsController::TVSlotId, str, value) {
+    str << value.ToString();
+}

@@ -27,11 +27,12 @@ using namespace NSchemeShard;
 using namespace NKikimrIssues;
 using namespace NOperationId;
 using namespace Ydb;
+using NOperationId::TOperationId;
 
 using TEvCancelOperationRequest = TGrpcRequestNoOperationCall<Ydb::Operations::CancelOperationRequest,
     Ydb::Operations::CancelOperationResponse>;
 
-class TCancelOperationRPC: public TRpcOperationRequestActor<TCancelOperationRPC, TEvCancelOperationRequest> {
+class TCancelOperationRPC: public TRpcOperationRequestActorBase<TCancelOperationRPC, TEvCancelOperationRequest> {
     TStringBuf GetLogPrefix() const override {
         switch (OperationId.GetKind()) {
         case TOperationId::EXPORT:
@@ -87,7 +88,7 @@ class TCancelOperationRPC: public TRpcOperationRequestActor<TCancelOperationRPC,
         if (OperationId.GetKind() == TOperationId::ANALYZE) {
             HandleSANavigateResult(ev);
         } else {
-            TRpcOperationRequestActor::Handle(ev);
+            TRpcOperationRequestActorBase::Handle(ev);
         }
     }
 
@@ -220,7 +221,7 @@ class TCancelOperationRPC: public TRpcOperationRequestActor<TCancelOperationRPC,
     }
 
 public:
-    using TRpcOperationRequestActor::TRpcOperationRequestActor;
+    using TRpcOperationRequestActorBase::TRpcOperationRequestActorBase;
 
     void Bootstrap() {
         const TString& id = GetProtoRequest()->id();
@@ -307,7 +308,7 @@ public:
         // SAPipeClient_ is opened only on the ANALYZE path. Closing the default actor id is a no-op,
         // so this is safe regardless of operation kind.
         NTabletPipe::CloseAndForgetClient(SelfId(), SAPipeClient_);
-        TRpcOperationRequestActor::PassAway();
+        TRpcOperationRequestActorBase::PassAway();
     }
 
 private:

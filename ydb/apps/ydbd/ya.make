@@ -41,6 +41,7 @@ PEERDIR(
     ydb/apps/version
     ydb/apps/ydbd/export
     ydb/core/driver_lib/run
+    ydb/core/http_proxy
     ydb/core/protos
     ydb/core/security
     ydb/core/tx/schemeshard

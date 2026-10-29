@@ -35,3 +35,7 @@ struct THash<NKikimr::NOlap::TOperationWriteId> {
         return THash<ui64>()(ui64(x));
     }
 };
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NOlap::TOperationWriteId, os, val);
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NOlap::TInsertWriteId, os, val);

@@ -399,3 +399,5 @@ template<>
 inline void Out<NKikimr::NPDisk::TLogChunkInfo>(IOutputStream& os, const NKikimr::NPDisk::TLogChunkInfo& x) {
     os << x.ToString();
 }
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NPDisk::TChunkState::ECommitState, os, n);

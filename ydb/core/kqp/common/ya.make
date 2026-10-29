@@ -35,7 +35,7 @@ PEERDIR(
     ydb/core/base
     ydb/core/engine
     ydb/core/grpc_services/cancelation
-    ydb/core/kqp/common/compilation
+    ydb/core/kqp/common/compilation  # gn: :interface
     ydb/core/kqp/common/events
     ydb/core/kqp/common/shutdown
     ydb/core/kqp/common/simple

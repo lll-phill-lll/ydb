@@ -14,7 +14,7 @@ library("manager") {
     # "//ydb/public/lib/scheme_types",
     # "//ydb/services/metadata",
     "//ydb/services/metadata/abstract",
-    "//ydb/services/metadata/request",
+    "//ydb/services/metadata/request:interface",
     "//yql/essentials/sql/settings",
   ]
 
@@ -24,6 +24,7 @@ library("manager") {
     "//ydb/library/table_creator",
     # "//ydb/services/bg_tasks/abstract",  # peerdir only
     # "//ydb/services/metadata/initializer",  # peerdir only
+    "//ydb/services/metadata/request:config",  # peerdir only
   ]
 
   sources = [

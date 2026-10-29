@@ -44,6 +44,7 @@ SRCS(
     ymq.cpp
     ymq.h
 )
+# gn: auth_factory headers auth_factory.h
 
 PEERDIR(
     contrib/libs/grpc

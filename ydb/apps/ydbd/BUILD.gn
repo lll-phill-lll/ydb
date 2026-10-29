@@ -7,6 +7,7 @@ linked_executable("ydbd") {
     "//ydb/core/driver_lib/run:main",
     "//ydb/core/driver_lib/version",  # peerdir only
     "//ydb/core/formats/arrow/program/olap_kernels",  # peerdir only
+    "//ydb/core/http_proxy",  # peerdir only
     "//ydb/core/protos",  # peerdir only
     "//ydb/core/security",
     "//ydb/core/security/token_manager",

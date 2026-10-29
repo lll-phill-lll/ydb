@@ -190,7 +190,7 @@ public:
     using TBase::TBase;
 
     void SetUp(NUnitTest::TTestContext& ctx) override {
-        Settings.LogSettings.AddLogPriority(NKikimrServices::EServiceKikimr::KQP_COMPUTE, NLog::PRI_TRACE);
+        Settings.LogSettings.AddLogPriority(NKikimrServices::EServiceKikimr::KQP_COMPUTE, NActors::NLog::PRI_TRACE);
         TBase::SetUp(ctx);
         AggregatorActorId = Runtime.Register(CreateDqPqInfoAggregationActor("test_tx"));
     }

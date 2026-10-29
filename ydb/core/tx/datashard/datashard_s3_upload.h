@@ -40,6 +40,8 @@ struct TS3Upload {
 } // namespace NDataShard
 } // namespace NKikimr
 
+Y_DECLARE_OUT_SPEC(, NKikimr::NDataShard::TS3Upload::EStatus, os, n);
+
 Y_DECLARE_OUT_SPEC(inline, NKikimr::NDataShard::TS3Upload, out, value) {
     value.Out(out);
 }

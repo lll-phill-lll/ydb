@@ -11,7 +11,7 @@ namespace NKikimr {
 namespace NGRpcService {
 
 template <typename TDerived, typename TEvRequest, bool HasOperation = false>
-class TRpcOperationRequestActor: public TRpcRequestActor<TDerived, TEvRequest, HasOperation> {
+class TRpcOperationRequestActorBase: public TRpcRequestActor<TDerived, TEvRequest, HasOperation> {
 protected:
     virtual TStringBuf GetLogPrefix() const = 0;
     virtual IEventBase* MakeRequest() = 0;
@@ -160,7 +160,7 @@ protected:
 private:
     TActorId PipeClient;
 
-}; // TRpcOperationRequestActor
+}; // TRpcOperationRequestActorBase
 
 } // namespace NGRpcService
 } // namespace NKikimr

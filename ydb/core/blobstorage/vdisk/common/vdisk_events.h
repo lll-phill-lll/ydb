@@ -308,6 +308,18 @@ namespace NKikimr {
 
     } // NBackpressure
 
+} // NKikimr
+
+Y_DECLARE_OUT_SPEC(inline, NKikimr::NBackpressure::TMessageId, o, x) {
+    x.Out(o);
+}
+
+Y_DECLARE_OUT_SPEC(inline, NKikimr::NBackpressure::TQueueClientId, o, x) {
+    x.Output(o);
+}
+
+namespace NKikimr {
+
     struct TVDiskSkeletonTrace {
         static constexpr ui32 BufferSize = 32;
         const char * Marks[BufferSize];

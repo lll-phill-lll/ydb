@@ -76,7 +76,7 @@ struct TImportTraits<TEvImportFromFsRequest> {
 };
 
 template <typename TDerived, typename TEvRequest>
-class TImportRPC: public TRpcOperationRequestActor<TDerived, TEvRequest, true>, public TImportConv {
+class TImportRPC: public TRpcOperationRequestActorBase<TDerived, TEvRequest, true>, public TImportConv {
     static constexpr bool IsS3Import = std::is_same_v<TEvRequest, TEvImportFromS3Request>;
     static constexpr bool IsFsImport = std::is_same_v<TEvRequest, TEvImportFromFsRequest>;
     using TTraits = TImportTraits<TEvRequest>;
@@ -137,7 +137,7 @@ class TImportRPC: public TRpcOperationRequestActor<TDerived, TEvRequest, true>, 
     }
 
 public:
-    using TRpcOperationRequestActor<TDerived, TEvRequest, true>::TRpcOperationRequestActor;
+    using TRpcOperationRequestActorBase<TDerived, TEvRequest, true>::TRpcOperationRequestActorBase;
 
     void Bootstrap() {
         const auto& request = *(this->GetProtoRequest());

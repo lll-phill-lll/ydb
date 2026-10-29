@@ -132,7 +132,7 @@ public:
 
     void AfterTypeAnnotation(TTransformationPipeline* pipeline) const final {
         pipeline->Add(TExprLogTransformer::Sync("OptimizedExpr", NYql::NLog::EComponent::Core, NYql::NLog::ELevel::TRACE), "OptTrace",
-            TIssuesIds::CORE, "OptTrace");
+            NYql::TIssuesIds::CORE, "OptTrace");
     }
 
     void AfterOptimize(TTransformationPipeline* pipeline) const final {

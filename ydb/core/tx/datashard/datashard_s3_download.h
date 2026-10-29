@@ -20,3 +20,5 @@ struct TS3Download {
 
 } // namespace NDataShard
 } // namespace NKikimr
+
+Y_DECLARE_OUT_SPEC(, NKikimr::NDataShard::TS3Download, out, value);

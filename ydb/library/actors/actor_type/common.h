@@ -1,4 +1,7 @@
 #pragma once
+
+#include <util/generic/serialized_enum.h>
+
 namespace NActors {
 
 struct TActorActivityTag {};
@@ -44,4 +47,9 @@ enum class EInternalActorSystemActivity {
     ACTOR_SYSTEM_WAKE_UP,
 };
 
+}
+
+namespace NEnumSerializationRuntime {
+    template <>
+    TMappedDictView<NActors::EInternalActorType, TString> GetEnumNamesImpl<NActors::EInternalActorType>();
 }

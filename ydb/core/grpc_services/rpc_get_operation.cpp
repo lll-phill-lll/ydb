@@ -45,7 +45,7 @@ using TEvGetOperationRequest = TGrpcRequestOperationCall<Ydb::Operations::GetOpe
     Ydb::Operations::GetOperationResponse>;
 
 class TGetOperationRPC
-    : public TRpcOperationRequestActor<TGetOperationRPC, TEvGetOperationRequest, true>
+    : public TRpcOperationRequestActorBase<TGetOperationRPC, TEvGetOperationRequest, true>
     , public TExportConv
     , public TBackupCollectionRestoreConv
 {
@@ -107,7 +107,7 @@ class TGetOperationRPC
         if (OperationId_.GetKind() == TOperationId::ANALYZE) {
             HandleSANavigateResult(ev);
         } else {
-            TRpcOperationRequestActor::Handle(ev);
+            TRpcOperationRequestActorBase::Handle(ev);
         }
     }
 
@@ -198,11 +198,11 @@ class TGetOperationRPC
             PipeActorId_ = TActorId();
         }
         NTabletPipe::CloseAndForgetClient(SelfId(), SAPipeClient_);
-        TRpcOperationRequestActor::PassAway();
+        TRpcOperationRequestActorBase::PassAway();
     }
 
 public:
-    using TRpcOperationRequestActor::TRpcOperationRequestActor;
+    using TRpcOperationRequestActorBase::TRpcOperationRequestActorBase;
 
     void Bootstrap(const TActorContext &ctx) {
         const auto req = GetProtoRequest();

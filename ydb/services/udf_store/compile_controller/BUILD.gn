@@ -18,7 +18,8 @@ library("compile_controller") {
     # "//ydb/library/aclib",
     "//ydb/library/yql/public/ydb_issue",  # peerdir only
     # "//ydb/services/metadata",
-    "//ydb/services/metadata/request",
+    "//ydb/services/metadata/request:config",  # peerdir only
+    "//ydb/services/metadata/request:interface",
     "//ydb/services/udf_store",
     "//ydb/services/udf_store/metadata_subscription",
     "//ydb/services/udf_store/wasm",
