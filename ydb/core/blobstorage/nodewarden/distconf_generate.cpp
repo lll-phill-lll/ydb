@@ -605,7 +605,7 @@ namespace NKikimr::NStorage {
         request.ExistingGroup = existingGroup;
         request.TryToRelocateLocallyFirst = params.TryToRelocateBrokenDisksLocallyFirst;
         request.IgnoreGroupLayoutChecks = params.LayoutPolicy.AllowsRelaxedPlacement();
-        request.BridgePileId = params.BridgePileId;
+        request.BridgePileId = NBridge::GetPlacementPileId(params.BridgePileId, BridgeInfo.get());
 
         NBsController::TGroupGeometryInfo geometry(params.GroupType.GetErasure(), selfManagementConfig.GetGeometry());
         const NBsController::TGroupMapper::TOptions options{
@@ -803,7 +803,7 @@ namespace NKikimr::NStorage {
                 continue;
             }
             TNodeLocation location(node.GetLocation());
-            TBridgePileId pileId = ResolveNodePileId(location);
+            TBridgePileId pileId = ResolveNodePileIdForConfig(baseConfig, location);
             nodes[pileId][location.GetDataCenterId()].emplace_back(node.GetNodeId(), location);
         }
         for (auto& [pileId, nodesByDataCenter] : nodes) {
