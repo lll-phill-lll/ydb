@@ -363,6 +363,7 @@ group("tests") {
         "//ydb/core/nbs/cloud/blockstore/libs/vhost/ut",
         "//ydb/core/nbs/cloud/blockstore/libs/vhost/ut_stress",
         "//ydb/core/nbs/cloud/storage/core/libs/common/ut",
+        "//ydb/core/nbs/cloud/storage/core/libs/coroutine/ut",
         "//ydb/core/path_aliasing/ut",
         "//ydb/core/persqueue/common/ut",
         "//ydb/core/persqueue/deferred_publish/ut",
