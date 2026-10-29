@@ -8,7 +8,7 @@ unittest_executable("ut") {
     "//ydb/core/formats/arrow/accessor/dictionary",
     "//ydb/core/formats/arrow/accessor/sub_columns",
     "//ydb/core/formats/arrow/accessor/sub_columns/ut_common",
-    "//ydb/library/arrow_kernels",
+    "//ydb/library/formats/arrow/helpers",
     "//ydb/services/metadata/abstract:request_features",
     "//yql/essentials/public/udf/service/stub",  # peerdir only
     "//yql/essentials/sql/pg_dummy",  # peerdir only

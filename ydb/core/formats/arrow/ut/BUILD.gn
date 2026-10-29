@@ -12,6 +12,7 @@ unittest_executable("ut") {
     "//ydb/library/arrow_kernels",
     "//ydb/library/formats/arrow",  # peerdir only
     "//ydb/library/formats/arrow/hash",
+    "//ydb/library/formats/arrow/helpers",
     "//ydb/library/formats/arrow/simple_builder",
     "//yql/essentials/parser/pg_wrapper",  # peerdir only
     "//yql/essentials/public/decimal",

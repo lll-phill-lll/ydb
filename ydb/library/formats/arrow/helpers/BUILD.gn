@@ -1,0 +1,11 @@
+library("helpers") {
+  public_deps = [
+    "//contrib/libs/apache/arrow",
+  ]
+
+  deps = [
+    # "//ydb/library/formats/arrow/switch",
+  ]
+
+  sources = [ "array.cpp" ]
+}

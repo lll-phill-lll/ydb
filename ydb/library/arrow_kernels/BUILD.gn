@@ -1,8 +1,5 @@
 library("arrow_kernels") {
-  public_deps = [
-    "//contrib/libs/apache/arrow",
-    # "//library/cpp/testing/unittest",
-  ]
+  public_deps = [ "//contrib/libs/apache/arrow" ]
 
   sources = [
     "func_cast.cpp",
