@@ -7,6 +7,7 @@ unittest_executable("ut_bridge") {
     "//ydb/core/blobstorage/vdisk/huge",
     "//ydb/core/protos",
     "//ydb/core/tablet",
+    "//ydb/core/tx/scheme_cache",
   ]
 
   sources = [
@@ -14,6 +15,7 @@ unittest_executable("ut_bridge") {
     "//ydb/core/blobstorage/ut_blobstorage/bridge_cluster_state.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_conversion.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_data_kind.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_decommit.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_rejoin.cpp",
