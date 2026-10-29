@@ -11,6 +11,7 @@ unittest_executable("ut") {
     "//ydb/core/base/services",
     "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/crypto",
+    "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/cms",
     "//ydb/core/cms/console",
     "//ydb/core/mind",

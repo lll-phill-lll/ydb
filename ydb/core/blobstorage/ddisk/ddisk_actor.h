@@ -13,6 +13,7 @@
 #include "persistent_buffer_space_allocator.h"
 #include "span_utils.h"
 
+#include <ydb/core/blobstorage/groupinfo/blobstorage_groupinfo.h>
 #include <ydb/core/blobstorage/pdisk/blobstorage_pdisk_data.h>
 #include <ydb/core/blobstorage/vdisk/common/vdisk_config.h>
 #include <ydb/core/util/hp_timer_helpers.h>

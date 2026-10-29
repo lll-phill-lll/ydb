@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.h"
+#include "blobstorage_encryption_key.h"
 #include <ydb/core/blobstorage/base/blobstorage_vdiskid.h>
 #include <ydb/core/blobstorage/crypto/crypto.h>
 #include <ydb/core/protos/blobstorage.pb.h>
@@ -41,25 +42,6 @@ static constexpr ui8 MaxVDisksInGroup = 32;
 
 // mapper interface forward declaration
 struct IBlobToDiskMapper;
-
-// encryption key for the group
-struct TEncryptionKey {
-    TCypherKey Key;
-    ui64 Version = 0;
-    TString Id;
-
-    TString ToString() const {
-        return TStringBuilder() << "{Id# '" << EscapeC(Id) << "' Version# " << Version << "}";
-    }
-
-    explicit operator bool() const { // returns true if the key is set
-        return Key.GetIsKeySet();
-    }
-
-    explicit operator const TCypherKey&() const {
-        return Key;
-    }
-};
 
 // current state of storage group
 class TBlobStorageGroupInfo : public TThrRefBase {

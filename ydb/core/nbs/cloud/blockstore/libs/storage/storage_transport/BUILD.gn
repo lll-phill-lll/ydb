@@ -10,13 +10,14 @@ library("storage_transport") {
     "//ydb/core/nbs/cloud/blockstore/libs/storage/model",
     "//ydb/core/nbs/cloud/storage/core/libs/common",
     "//ydb/core/protos",
+    # "//ydb/library/actors/core",
     # "//ydb/library/actors/interconnect",
   ]
 
   deps = [
+    # "//ydb/core/base",
     # "//ydb/core/mind/bscontroller",  # peerdir only
     # "//ydb/core/nbs/cloud/storage/core/libs/actors",
-    # "//ydb/library/actors/core",
     # "//ydb/library/actors/util",
     "//ydb/library/services",
   ]

@@ -1,6 +1,7 @@
 #include "service_actor.h"
 #include "util.h"
 
+#include <ydb/core/base/appdata.h>
 #include <ydb/core/base/counters.h>
 #include <ydb/core/base/blobstorage.h>
 #include <ydb/core/blobstorage/ddisk/ddisk.h>

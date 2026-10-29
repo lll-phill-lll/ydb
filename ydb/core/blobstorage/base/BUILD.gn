@@ -4,7 +4,6 @@ library("base") {
     # "//library/cpp/monlib/dynamic_counters",
     # "//library/cpp/monlib/metrics",
     "//ydb/core/base",
-    # "//ydb/core/blobstorage/groupinfo",
     # "//ydb/core/blobstorage/pdisk",
     # "//ydb/core/blobstorage/vdisk/common",
     "//ydb/core/blobstorage/vdisk/common:guids",

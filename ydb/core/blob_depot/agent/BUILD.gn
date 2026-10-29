@@ -2,7 +2,7 @@ library("agent") {
   public_deps = [
     "//ydb/core/base",
     "//ydb/core/blob_depot",
-    # "//ydb/core/blobstorage/vdisk/common",
+    "//ydb/core/blobstorage/vdisk/common",
     # "//ydb/core/util",
   ]
 

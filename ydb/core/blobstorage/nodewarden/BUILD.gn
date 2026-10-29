@@ -10,6 +10,7 @@ library("nodewarden") {
     # "//ydb/core/blobstorage/crypto",
     "//ydb/core/blobstorage/dsproxy",
     "//ydb/core/blobstorage/dsproxy/mock",
+    # "//ydb/core/blobstorage/groupinfo",
     "//ydb/core/blobstorage/incrhuge",
     "//ydb/core/blobstorage/pdisk",
     # "//ydb/core/blobstorage/vdisk/common",
@@ -39,7 +40,6 @@ library("nodewarden") {
     "//ydb/core/blobstorage/bridge/syncer",
     # "//ydb/core/blobstorage/common",
     "//ydb/core/blobstorage/ddisk",
-    # "//ydb/core/blobstorage/groupinfo",
     "//ydb/core/blobstorage/vdisk",
     "//ydb/core/blobstorage/vdisk/hullop",
     # "//ydb/core/blobstorage/vdisk/localrecovery",  # peerdir only

@@ -2,10 +2,12 @@
 
 #include <ydb/core/blobstorage/base/utility.h>
 #include <ydb/core/blobstorage/crypto/default.h>
+#include <ydb/core/blobstorage/groupinfo/blobstorage_encryption_key.h>
 #include <ydb/core/blobstorage/vdisk/common/vdisk_config.h>
 #include <ydb/core/blobstorage/pdisk/blobstorage_pdisk_drivemodel_db.h>
 #include <ydb/core/blobstorage/pdisk/blobstorage_pdisk_factory.h>
 #include <ydb/core/nbs/cloud/blockstore/config/protos/ddisk_config.pb.h>
+#include <ydb/core/protos/blobstorage.pb.h>
 #include <ydb/library/pdisk_io/sector_map.h>
 
 #include <functional>

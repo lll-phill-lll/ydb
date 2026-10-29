@@ -5,7 +5,7 @@
 #include "blob_header_mode.h"
 #include "vdisk_events_quoter.h"
 
-#include <ydb/core/blobstorage/groupinfo/blobstorage_groupinfo.h>
+#include <ydb/core/blobstorage/base/blobstorage_vdiskid.h>
 #include <ydb/core/base/blobstorage.h>
 #include <ydb/core/protos/blobstorage_vdisk_config.pb.h>
 #include <ydb/core/protos/feature_flags.pb.h>

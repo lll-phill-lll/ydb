@@ -3,7 +3,7 @@ library("mind") {
     ":nameserver_table_builder",
     ":tenant_node_enumeration",
     "//ydb/core/base",
-    # "//ydb/core/blobstorage/base",
+    "//ydb/core/blobstorage/base",
     "//ydb/core/cms/console",
     # "//ydb/core/engine/minikql",
     "//ydb/core/protos",

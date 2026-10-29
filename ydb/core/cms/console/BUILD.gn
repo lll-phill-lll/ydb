@@ -3,7 +3,7 @@ library("console") {
     "//library/cpp/monlib/dynamic_counters",
     "//ydb/core/actorlib_impl",
     "//ydb/core/base",
-    # "//ydb/core/blobstorage/base",
+    "//ydb/core/blobstorage/base",
     "//ydb/core/cms/console/util",
     "//ydb/core/config/init",
     "//ydb/core/control/lib",

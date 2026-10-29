@@ -13,6 +13,7 @@
 #include <ydb/core/control/immediate_control_board_actor.h>
 #include <ydb/core/node_whiteboard/node_whiteboard.h>
 #include <ydb/core/blobstorage/dsproxy/mock/dsproxy_mock.h>
+#include <ydb/core/blobstorage/nodewarden/node_warden.h>
 #include <ydb/core/blobstorage/pdisk/blobstorage_pdisk_tools.h>
 #include <ydb/core/quoter/quoter_service.h>
 #include <ydb/core/tablet/tablet_monitoring_proxy.h>

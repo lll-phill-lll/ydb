@@ -8,6 +8,7 @@
 #include <ydb/core/nbs/cloud/blockstore/libs/storage/model/public.h>
 
 #include <ydb/core/blobstorage/ddisk/ddisk.h>
+#include <ydb/library/actors/core/interconnect.h>
 
 namespace NYdb::NBS::NBlockStore::NStorage::NTransport {
 

@@ -5,6 +5,7 @@
 
 #include <ydb/core/base/tabletid.h>
 #include <ydb/core/blobstorage/crypto/default.h>
+#include <ydb/core/blobstorage/nodewarden/node_warden.h>
 #include <ydb/core/mind/bscontroller/bsc.h>
 #include <ydb/core/testlib/basics/appdata.h>
 #include <ydb/core/testlib/basics/helpers.h>

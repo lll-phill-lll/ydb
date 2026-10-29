@@ -8,6 +8,7 @@ unittest_executable("ut_sentinel_unstable") {
     "//ydb/core/base",
     "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/crypto",
+    "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/cms",
     "//ydb/core/cms/console",
     "//ydb/core/mind",

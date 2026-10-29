@@ -5,6 +5,7 @@ library("ddisk") {
     # "//library/cpp/time_provider",
     "//ydb/core/base",
     # "//ydb/core/blobstorage",
+    # "//ydb/core/blobstorage/groupinfo",
     "//ydb/core/blobstorage/pdisk",
     "//ydb/core/blobstorage/vdisk/common",
     "//ydb/core/protos",

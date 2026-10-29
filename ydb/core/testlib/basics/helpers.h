@@ -8,13 +8,14 @@
 #include <ydb/core/base/blobstorage.h>
 #include <ydb/core/base/statestorage.h>
 #include <ydb/core/blobstorage/dsproxy/mock/model.h>
-#include <ydb/core/blobstorage/nodewarden/node_warden.h>
 #include <ydb/core/blobstorage/pdisk/blobstorage_pdisk.h>
 #include <ydb/core/blobstorage/pdisk/blobstorage_pdisk_factory.h>
 
 #include <functional>
 
 namespace NKikimr {
+    struct TNodeWardenConfig;
+
 namespace NFake {
     struct TStorage {
         bool UseDisk = false;

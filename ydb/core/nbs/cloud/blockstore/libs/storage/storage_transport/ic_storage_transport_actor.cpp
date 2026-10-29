@@ -6,6 +6,8 @@
 #include <ydb/core/nbs/cloud/storage/core/libs/actors/helpers.h>
 #include <ydb/core/nbs/cloud/storage/core/libs/common/error_utils.h>
 
+#include <ydb/core/base/appdata_fwd.h>
+
 #include <ydb/library/actors/util/rope.h>
 
 namespace NYdb::NBS::NBlockStore::NStorage::NTransport {

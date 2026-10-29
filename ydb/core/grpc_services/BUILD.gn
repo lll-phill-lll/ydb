@@ -53,7 +53,7 @@ library("grpc_services") {
     "//ydb/core/audit",
     "//ydb/core/backup/common",
     "//ydb/core/backup/regexp",
-    # "//ydb/core/blobstorage/base",
+    "//ydb/core/blobstorage/base",
     # "//ydb/core/blobstorage/nodewarden",
     # "//ydb/core/cms",
     # "//ydb/core/counters_info",
