@@ -6,7 +6,7 @@ library("local_proxy") {
   ]
 
   deps = [
-    # "//ydb/core/base",  # peerdir only
+    # "//ydb/core/base",
     "//ydb/core/grpc_services",
     "//ydb/core/grpc_services:topic_rpc",
     "//ydb/core/persqueue/events",

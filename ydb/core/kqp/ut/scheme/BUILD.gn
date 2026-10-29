@@ -7,9 +7,12 @@ unittest_executable("scheme") {
     "//ydb/core/base",
     "//ydb/core/cms/console",
     "//ydb/core/formats/arrow",
+    "//ydb/core/grpc_services",
     "//ydb/core/grpc_services/base",
     "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/kqp",  # peerdir only
+    "//ydb/core/kqp/common/events",
+    "//ydb/core/kqp/common/simple",
     "//ydb/core/kqp/counters",
     "//ydb/core/kqp/gateway/actors",
     "//ydb/core/kqp/gateway:interface",
@@ -28,6 +31,7 @@ unittest_executable("scheme") {
     "//ydb/public/lib/yson_value",
     "//ydb/public/sdk/cpp/src/client/arrow",
     "//ydb/public/sdk/cpp/src/client/draft",
+    "//ydb/public/sdk/cpp/src/client/import",
     "//ydb/public/sdk/cpp/src/client/operation",
     "//ydb/public/sdk/cpp/src/client/proto",
     "//ydb/public/sdk/cpp/src/client/query",
@@ -46,6 +50,7 @@ unittest_executable("scheme") {
 
   sources = [
     "kqp_acl_ut.cpp",
+    "kqp_client_data_writes_ut.cpp",
     "kqp_constraints_ut.cpp",
     "kqp_generated_columns_ut.cpp",
     "kqp_scheme_fulltext_ut.cpp",
