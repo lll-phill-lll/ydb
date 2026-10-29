@@ -1,11 +1,16 @@
 unittest_executable("ut_replication") {
   deps = [
+    "//ydb/core/blobstorage/backpressure",
     "//ydb/core/blobstorage/ut_blobstorage/lib",
+    "//ydb/core/blobstorage/vdisk/common",
     "//ydb/core/blobstorage/vdisk/hulldb/base:base_types",
+    "//ydb/core/blobstorage/vdisk/repl",
   ]
 
   sources = [
+    "//ydb/core/blobstorage/ut_blobstorage/recover_lost_data_generation.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/replication.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/replication_generation.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/replication_huge.cpp",
   ]
 
