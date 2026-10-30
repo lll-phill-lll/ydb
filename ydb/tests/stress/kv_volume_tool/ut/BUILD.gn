@@ -1,0 +1,14 @@
+unittest_executable("ut") {
+  deps = [
+    "//library/cpp/testing/unittest",
+    "//ydb/public/api/protos",  # peerdir only
+    "//ydb/tests/stress/kv_volume_tool",
+  ]
+
+  sources = [
+    "//ydb/tests/stress/kv_volume_tool/endpoint_select.cpp",
+    "endpoint_select_ut.cpp",
+  ]
+
+  link_select = [ "allocator=tcmalloc" ]
+}

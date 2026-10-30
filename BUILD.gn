@@ -872,6 +872,7 @@ group("tests") {
         "//ydb/tests/functional/sdk/cpp/path_aliasing",
         "//ydb/tests/functional/sdk/cpp/sdk_credprovider",
         "//ydb/tests/olap/high_load",
+        "//ydb/tests/stress/kv_volume_tool/ut",
         "//ydb/tests/tools/fqrun",
         "//ydb/tests/tools/kqprun",
         "//ydb/tools/pdisktool/ut",
