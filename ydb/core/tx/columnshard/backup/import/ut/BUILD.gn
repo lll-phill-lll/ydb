@@ -5,6 +5,7 @@ unittest_executable("ut") {
     "//library/cpp/regex/pcre",  # peerdir only
     "//library/cpp/svnversion",  # peerdir only
     "//library/cpp/testing/hook",
+    "//ydb/core/formats/arrow",
     "//ydb/core/protos",
     "//ydb/core/testlib/default",  # peerdir only
     "//ydb/core/tx",
@@ -16,6 +17,7 @@ unittest_executable("ut") {
     "//ydb/core/tx/datashard",
     "//ydb/core/wrappers",
     "//ydb/library/actors/struct_log",
+    "//ydb/library/formats/arrow/simple_builder",
     "//ydb/library/testlib/backup_test_enums",
     "//ydb/library/testlib/s3_recipe_helper",
     "//ydb/public/lib/yson_value",  # peerdir only
