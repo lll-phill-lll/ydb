@@ -8,7 +8,10 @@ library("tiering") {
     # "//ydb/library/formats/arrow/validation",
   ]
 
-  deps = [ "//ydb/core/tx/columnshard/blobs_action/abstract" ]
+  deps = [
+    "//ydb/core/tx/columnshard/blobs_action/abstract",
+    "//yql/essentials/types/dynumber",
+  ]
 
   sources = [
     "common.cpp",
