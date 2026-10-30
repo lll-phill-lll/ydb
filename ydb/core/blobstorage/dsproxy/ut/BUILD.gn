@@ -29,6 +29,7 @@ unittest_executable("ut") {
     "dsproxy_quorum_tracker_ut.cpp",
     "dsproxy_request_reporting_ut.cpp",
     "dsproxy_sequence_ut.cpp",
+    "dsproxy_vdisk_mock_ut.cpp",
   ]
 
   link_select = [
