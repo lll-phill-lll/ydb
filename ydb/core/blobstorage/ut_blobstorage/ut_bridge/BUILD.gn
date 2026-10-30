@@ -1,5 +1,7 @@
 unittest_executable("ut_bridge") {
   deps = [
+    "//contrib/libs/yaml-cpp",
+    "//library/cpp/yaml/as",
     "//ydb/core/base",
     "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/nodewarden",
@@ -18,6 +20,7 @@ unittest_executable("ut_bridge") {
     "//ydb/core/blobstorage/ut_blobstorage/bridge_decommit.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_piles.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_rejoin.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_restart.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_syncer.cpp",

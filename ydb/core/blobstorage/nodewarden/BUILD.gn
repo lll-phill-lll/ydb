@@ -4,6 +4,7 @@ config("nodewarden_private_config") {
 
 library("nodewarden") {
   public_deps = [
+    # "//library/cpp/json",
     # "//library/cpp/time_provider",
     "//ydb/core/base",
     "//ydb/core/blobstorage/base",
@@ -29,7 +30,6 @@ library("nodewarden") {
   deps = [
     # "//contrib/libs/protobuf",
     "//contrib/libs/xxhash",
-    # "//library/cpp/json",
     "//library/cpp/lwtrace/mon",
     "//library/cpp/openssl/crypto",
     # "//library/cpp/protobuf/json",

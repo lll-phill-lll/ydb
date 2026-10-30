@@ -2,10 +2,10 @@
 #include <condition_variable>
 #include <thread>
 #include "contrib/libs/grpc/include/grpc++/server_context.h"
-#include "contrib/libs/grpc/include/grpcpp/impl/service_type.h"
 #include "contrib/libs/protobuf/src/google/protobuf/util/json_util.h"
 #include "library/cpp/codecs/codecs.h"
 #include "library/cpp/testing/unittest/tests_data.h"
+#include "library/cpp/yaml/as/tstring.h"
 #include "ydb/core/base/hive.h"
 #include "ydb/core/base/storage_pool_kinds.h"
 #include "ydb/core/base/tx_processing.h"
@@ -40,7 +40,9 @@
 #include "ydb/library/login/login.h"
 #include "ydb/library/protobuf_printer/security_printer.h"
 #include "ydb/public/sdk/cpp/include/ydb-cpp-sdk/client/topic/write_events.h"
+#include "yql/essentials/core/pg_settings/guc_settings.h"
 #include "ydb/core/protos/blobstorage_ddisk.pb.h"
+#include "ydb/core/protos/datashard_config.pb.h"
 #include "ydb/core/protos/flat_tx_scheme.pb.h"
 #include "ydb/core/protos/netclassifier.pb.h"
 #include "ydb/core/protos/statestorage.pb.h"

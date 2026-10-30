@@ -42,6 +42,7 @@ unittest_executable("ut") {
     "//ydb/core/base/logoblob_ut.cpp",
     "//ydb/core/base/statestorage_guardian_impl_ut.cpp",
     "//ydb/core/base/statestorage_ut.cpp",
+    "bridge_ut.cpp",
     "fulltext_ut.cpp",
     "kmeans_ut.cpp",
     "memory_stats_ut.cpp",
