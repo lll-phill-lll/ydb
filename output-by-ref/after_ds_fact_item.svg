@@ -1,0 +1,3066 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="502" onload="init(evt)" viewBox="0 0 1200 502" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+		if (currentSearchTerm === null) return;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="502.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >ds_fact_item block-hash</text>
+<text id="details" x="10.00" y="485" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="485" > </text>
+<g id="frames">
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::AllocRawHugepages (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="261" width="1.1" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="1050.96" y="271.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;long, true, NYql::NUdf::TFixedSizeArrayBuilder&lt;long, true&gt; &gt;::DoAdd (4,004,004 samples, 0.37%)</title><rect x="1126.6" y="341" width="4.4" height="15.0" fill="rgb(205,0,0)" rx="2" ry="2" />
+<text  x="1129.63" y="351.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::slow_alloc_small&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="14.4" y="373" width="1.1" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="17.37" y="383.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::ToBlocks (44,044,044 samples, 4.07%)</title><rect x="1090.6" y="373" width="48.0" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="1093.57" y="383.5" >NKik..</text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TFixedSizeColumnDataExtractor&lt;int, false&gt;::GetColumnsDataConst (1,001,001 samples, 0.09%)</title><rect x="392.4" y="293" width="1.1" height="15.0" fill="rgb(248,199,47)" rx="2" ry="2" />
+<text  x="395.41" y="303.5" ></text>
+</g>
+<g >
+<title>folio_alloc_mpol_noprof (5,005,005 samples, 0.46%)</title><rect x="1064.4" y="197" width="5.4" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="1067.35" y="207.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::~ArrayData (4,004,004 samples, 0.37%)</title><rect x="920.1" y="309" width="4.4" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="923.13" y="319.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;double, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;double, false&gt; &gt;::DoAdd (1,001,001 samples, 0.09%)</title><rect x="1136.5" y="357" width="1.1" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="1139.46" y="367.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::central_freelist_internal::CentralFreeList&lt;tcmalloc::tcmalloc_internal::central_freelist_internal::StaticForwarder&gt;::ReleaseToSpans (1,001,001 samples, 0.09%)</title><rect x="967.1" y="213" width="1.1" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text  x="970.11" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLArrowAllocate (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="245" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="1134.00" y="255.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (4,004,004 samples, 0.37%)</title><rect x="974.8" y="309" width="4.3" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="977.76" y="319.5" ></text>
+</g>
+<g >
+<title>mas_walk (1,001,001 samples, 0.09%)</title><rect x="1182.4" y="213" width="1.0" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="1185.35" y="223.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="261" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::TSystemMmap::Munmap (1,001,001 samples, 0.09%)</title><rect x="1167.1" y="341" width="1.0" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1170.06" y="351.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="11.1" y="373" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="14.09" y="383.5" ></text>
+</g>
+<g >
+<title>unmap_single_vma (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="133" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1041.13" y="143.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDirectArrayHolderInplace::GetElement (1,001,001 samples, 0.09%)</title><rect x="970.4" y="373" width="1.1" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="973.39" y="383.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TDirectListHolder::TIterator::Next (1,001,001 samples, 0.09%)</title><rect x="945.3" y="373" width="1.1" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="948.26" y="383.5" ></text>
+</g>
+<g >
+<title>do_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="149" width="1.1" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="17.37" y="159.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLArrowAllocate (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="245" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="1135.09" y="255.5" ></text>
+</g>
+<g >
+<title>__libc_csu_init (3,003,003 samples, 0.28%)</title><rect x="12.2" y="421" width="3.3" height="15.0" fill="rgb(205,2,0)" rx="2" ry="2" />
+<text  x="15.19" y="431.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="261" width="1.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1153.67" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBlockLayoutConverter::GetColumns_ (4,004,004 samples, 0.37%)</title><rect x="390.2" y="309" width="4.4" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="393.22" y="319.5" ></text>
+</g>
+<g >
+<title>sysvec_reschedule_ipi (2,002,002 samples, 0.19%)</title><rect x="491.8" y="261" width="2.2" height="15.0" fill="rgb(236,146,35)" rx="2" ry="2" />
+<text  x="494.83" y="271.5" ></text>
+</g>
+<g >
+<title>irqentry_exit (2,002,002 samples, 0.19%)</title><rect x="491.8" y="245" width="2.2" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="494.83" y="255.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="933.2" y="261" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="936.24" y="271.5" ></text>
+</g>
+<g >
+<title>irqentry_exit (1,001,001 samples, 0.09%)</title><rect x="263.5" y="277" width="1.1" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="266.48" y="287.5" ></text>
+</g>
+<g >
+<title>__rmqueue_pcplist (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="101" width="2.2" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1131.81" y="111.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1,001,001 samples, 0.09%)</title><rect x="848.0" y="101" width="1.1" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="851.02" y="111.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::DeepSlice (5,005,005 samples, 0.46%)</title><rect x="927.8" y="261" width="5.4" height="15.0" fill="rgb(228,109,26)" rx="2" ry="2" />
+<text  x="930.78" y="271.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="967.1" y="277" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="970.11" y="287.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArrayBuilderBase::Add (2,002,002 samples, 0.19%)</title><rect x="1138.6" y="373" width="2.2" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="1141.65" y="383.5" ></text>
+</g>
+<g >
+<title>folios_put_refs (1,001,001 samples, 0.09%)</title><rect x="1183.4" y="133" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1186.44" y="143.5" ></text>
+</g>
+<g >
+<title>__tlb_batch_free_encoded_pages (1,001,001 samples, 0.09%)</title><rect x="1183.4" y="165" width="1.1" height="15.0" fill="rgb(205,3,0)" rx="2" ry="2" />
+<text  x="1186.44" y="175.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="943.1" y="325" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="946.07" y="335.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::MallocOomPolicy, tcmalloc::tcmalloc_internal::MallocAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::slow_alloc_large&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::MallocOomPolicy, tcmalloc::tcmalloc_internal::MallocAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="325" width="1.1" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="1050.96" y="335.5" ></text>
+</g>
+<g >
+<title>kmem_cache_free (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="229" width="1.0" height="15.0" fill="rgb(254,225,53)" rx="2" ry="2" />
+<text  x="1140.56" y="239.5" ></text>
+</g>
+<g >
+<title>schedule (1,001,001 samples, 0.09%)</title><rect x="263.5" y="245" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="266.48" y="255.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map (2,002,002 samples, 0.19%)</title><rect x="995.5" y="213" width="2.2" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="998.52" y="223.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="165" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1135.09" y="175.5" ></text>
+</g>
+<g >
+<title>__munmap (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="341" width="6.6" height="15.0" fill="rgb(211,29,7)" rx="2" ry="2" />
+<text  x="1186.44" y="351.5" ></text>
+</g>
+<g >
+<title>absl::lts_20260817::numbers_internal::safe_strto32_base (1,001,001 samples, 0.09%)</title><rect x="14.4" y="261" width="1.1" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="17.37" y="271.5" ></text>
+</g>
+<g >
+<title>rcu_core (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="277" width="1.0" height="15.0" fill="rgb(222,81,19)" rx="2" ry="2" />
+<text  x="1140.56" y="287.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::TTupleLayoutSIMD&lt;NSimd::TSimdTraits&lt;32, long long __vector (91,091,091 samples, 8.43%)</title><rect x="394.6" y="309" width="99.4" height="15.0" fill="rgb(243,177,42)" rx="2" ry="2" />
+<text  x="397.59" y="319.5" >NKikimr::NMi..</text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="325" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1092.48" y="335.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TPackResult::AllocatedBytes (1,001,001 samples, 0.09%)</title><rect x="887.4" y="325" width="1.0" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="890.35" y="335.5" ></text>
+</g>
+<g >
+<title>zap_page_range_single (1,001,001 samples, 0.09%)</title><rect x="968.2" y="133" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="971.20" y="143.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::LockAndAlloc (1,001,001 samples, 0.09%)</title><rect x="13.3" y="277" width="1.1" height="15.0" fill="rgb(250,207,49)" rx="2" ry="2" />
+<text  x="16.28" y="287.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="245" width="2.2" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1131.81" y="255.5" ></text>
+</g>
+<g >
+<title>tlb_finish_mmu (6,006,006 samples, 0.56%)</title><rect x="1169.2" y="181" width="6.6" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="1172.24" y="191.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="277" width="2.2" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="1127.44" y="287.5" ></text>
+</g>
+<g >
+<title>get_page_from_freelist (2,002,002 samples, 0.19%)</title><rect x="976.9" y="149" width="2.2" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="979.94" y="159.5" ></text>
+</g>
+<g >
+<title>do_read_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="133" width="1.1" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="17.37" y="143.5" ></text>
+</g>
+<g >
+<title>__memcg_slab_post_alloc_hook (1,001,001 samples, 0.09%)</title><rect x="1186.7" y="149" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1189.72" y="159.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (1,001,001 samples, 0.09%)</title><rect x="1088.4" y="293" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1091.39" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::TGlobalPools&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;, false&gt;::~TGlobalPools (15,015,015 samples, 1.39%)</title><rect x="1167.1" y="389" width="16.3" height="15.0" fill="rgb(206,8,2)" rx="2" ry="2" />
+<text  x="1170.06" y="399.5" ></text>
+</g>
+<g >
+<title>irq_exit_rcu (1,001,001 samples, 0.09%)</title><rect x="848.0" y="293" width="1.1" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="851.02" y="303.5" ></text>
+</g>
+<g >
+<title>vma_complete (1,001,001 samples, 0.09%)</title><rect x="1181.3" y="181" width="1.1" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="1184.26" y="191.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::Release (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="325" width="1.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="1041.13" y="335.5" ></text>
+</g>
+<g >
+<title>folio_alloc_mpol_noprof (2,002,002 samples, 0.19%)</title><rect x="976.9" y="197" width="2.2" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="979.94" y="207.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="213" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="17.37" y="223.5" ></text>
+</g>
+<g >
+<title>__rcu_read_unlock (2,002,002 samples, 0.19%)</title><rect x="991.1" y="293" width="2.2" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="994.15" y="303.5" ></text>
+</g>
+<g >
+<title>memcpy@plt (5,005,005 samples, 0.46%)</title><rect x="256.9" y="325" width="5.5" height="15.0" fill="rgb(224,88,21)" rx="2" ry="2" />
+<text  x="259.93" y="335.5" ></text>
+</g>
+<g >
+<title>llvm::cl::opt&lt;bool, false, llvm::cl::parser&lt;bool&gt; &gt;::opt&lt;char [10], llvm::cl::OptionHidden&gt; (1,001,001 samples, 0.09%)</title><rect x="12.2" y="389" width="1.1" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="15.19" y="399.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="252.6" y="293" width="1.0" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="255.56" y="303.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="341" width="1.1" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="1120.89" y="351.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="940.9" y="309" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="943.89" y="319.5" ></text>
+</g>
+<g >
+<title>__rmqueue_pcplist (4,004,004 samples, 0.37%)</title><rect x="1014.1" y="117" width="4.4" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1017.09" y="127.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="133" width="1.1" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1134.00" y="143.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::ShrinkCache (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="325" width="1.1" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="1153.67" y="335.5" ></text>
+</g>
+<g >
+<title>__memset_avx512_unaligned_erms (20,020,020 samples, 1.85%)</title><rect x="1049.1" y="357" width="21.8" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="1052.06" y="367.5" >_..</text>
+</g>
+<g >
+<title>arrow::util::detail::explicit_copy_constructor::type&lt;arrow::util::Variant&lt;arrow::Datum::Empty, std::__y1::shared_ptr&lt;arrow::Scalar&gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt; &gt;::type (1,001,001 samples, 0.09%)</title><rect x="267.9" y="341" width="1.0" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="270.85" y="351.5" ></text>
+</g>
+<g >
+<title>long std::__y1::uniform_int_distribution&lt;long&gt;::operator (8,008,008 samples, 0.74%)</title><rect x="1141.9" y="373" width="8.8" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="1144.93" y="383.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (11,011,011 samples, 1.02%)</title><rect x="1058.9" y="293" width="12.0" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="1061.89" y="303.5" ></text>
+</g>
+<g >
+<title>folio_add_lru_vma (2,002,002 samples, 0.19%)</title><rect x="1018.5" y="229" width="2.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1021.46" y="239.5" ></text>
+</g>
+<g >
+<title>folios_put_refs (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="101" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1153.67" y="111.5" ></text>
+</g>
+<g >
+<title>rmqueue_bulk (2,002,002 samples, 0.19%)</title><rect x="1016.3" y="101" width="2.2" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="1019.28" y="111.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TDirectListHolder::~TDirectListHolder (21,021,021 samples, 1.94%)</title><rect x="946.4" y="373" width="22.9" height="15.0" fill="rgb(205,0,0)" rx="2" ry="2" />
+<text  x="949.35" y="383.5" >N..</text>
+</g>
+<g >
+<title>NYql::NUdf::Chop (5,005,005 samples, 0.46%)</title><rect x="927.8" y="277" width="5.4" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="930.78" y="287.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (2,002,002 samples, 0.19%)</title><rect x="1018.5" y="181" width="2.1" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1021.46" y="191.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TProgramBuilder::Nth (1,001,001 samples, 0.09%)</title><rect x="969.3" y="309" width="1.1" height="15.0" fill="rgb(208,14,3)" rx="2" ry="2" />
+<text  x="972.30" y="319.5" ></text>
+</g>
+<g >
+<title>global constructors keyed to 000101 (2,002,002 samples, 0.19%)</title><rect x="13.3" y="405" width="2.2" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="16.28" y="415.5" ></text>
+</g>
+<g >
+<title>zap_pte_range (1,001,001 samples, 0.09%)</title><rect x="968.2" y="69" width="1.1" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="971.20" y="79.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="983.5" y="309" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="986.50" y="319.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="245" width="3.2" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1124.17" y="255.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="325" width="15.3" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1171.15" y="335.5" ></text>
+</g>
+<g >
+<title>llvm::cl::Option::addArgument (1,001,001 samples, 0.09%)</title><rect x="12.2" y="373" width="1.1" height="15.0" fill="rgb(214,45,10)" rx="2" ry="2" />
+<text  x="15.19" y="383.5" ></text>
+</g>
+<g >
+<title>vm_area_free_rcu_cb (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="245" width="1.0" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="1140.56" y="255.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TExternalComputationNode::GetValue (1,001,001 samples, 0.09%)</title><rect x="503.9" y="245" width="1.0" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="506.85" y="255.5" ></text>
+</g>
+<g >
+<title>std::__y1::vector&lt;unsigned char, NKikimr::NMiniKQL::TMKQLAllocator&lt;unsigned char,  (1,001,001 samples, 0.09%)</title><rect x="502.8" y="309" width="1.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="505.76" y="319.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1135.4" y="213" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1138.37" y="223.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="309" width="2.2" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1131.81" y="319.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::Delete (1,001,001 samples, 0.09%)</title><rect x="876.4" y="293" width="1.1" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="879.43" y="303.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="229" width="1.1" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1153.67" y="239.5" ></text>
+</g>
+<g >
+<title>NKikimr::TGlobalPools&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;, true&gt;::~TGlobalPools (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="389" width="6.6" height="15.0" fill="rgb(241,167,39)" rx="2" ry="2" />
+<text  x="1186.44" y="399.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map (1,001,001 samples, 0.09%)</title><rect x="975.9" y="213" width="1.0" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="978.85" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;::Munmap (15,015,015 samples, 1.39%)</title><rect x="1167.1" y="357" width="16.3" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1170.06" y="367.5" ></text>
+</g>
+<g >
+<title>__vm_munmap (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="261" width="15.3" height="15.0" fill="rgb(231,121,28)" rx="2" ry="2" />
+<text  x="1171.15" y="271.5" ></text>
+</g>
+<g >
+<title>__rmqueue_pcplist (2,002,002 samples, 0.19%)</title><rect x="1067.6" y="117" width="2.2" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1070.63" y="127.5" ></text>
+</g>
+<g >
+<title>irqentry_exit (1,001,001 samples, 0.09%)</title><rect x="268.9" y="309" width="1.1" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="271.94" y="319.5" ></text>
+</g>
+<g >
+<title>sysvec_reschedule_ipi (3,003,003 samples, 0.28%)</title><rect x="253.6" y="293" width="3.3" height="15.0" fill="rgb(236,146,35)" rx="2" ry="2" />
+<text  x="256.65" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TMutableComputationNode&lt;NKikimr::NMiniKQL::(anonymous namespace)::TElementWrapper&lt; (1,001,001 samples, 0.09%)</title><rect x="503.9" y="293" width="1.0" height="15.0" fill="rgb(224,87,21)" rx="2" ry="2" />
+<text  x="506.85" y="303.5" ></text>
+</g>
+<g >
+<title>__list_del_entry_valid_or_report (2,002,002 samples, 0.19%)</title><rect x="1014.1" y="101" width="2.2" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="1017.09" y="111.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="892.8" y="341" width="1.1" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="895.81" y="351.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="213" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="223.5" ></text>
+</g>
+<g >
+<title>__x64_sys_madvise (1,001,001 samples, 0.09%)</title><rect x="968.2" y="181" width="1.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="971.20" y="191.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="325" width="3.2" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1124.17" y="335.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (3,003,003 samples, 0.28%)</title><rect x="253.6" y="261" width="3.3" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="256.65" y="271.5" ></text>
+</g>
+<g >
+<title>folio_add_new_anon_rmap (3,003,003 samples, 0.28%)</title><rect x="1020.6" y="229" width="3.3" height="15.0" fill="rgb(233,133,31)" rx="2" ry="2" />
+<text  x="1023.65" y="239.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (1,001,001 samples, 0.09%)</title><rect x="969.3" y="181" width="1.1" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="972.30" y="191.5" ></text>
+</g>
+<g >
+<title>folio_alloc_mpol_noprof (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="181" width="2.2" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="1131.81" y="191.5" ></text>
+</g>
+<g >
+<title>llvm::StringMapImpl::RehashTable (1,001,001 samples, 0.09%)</title><rect x="12.2" y="341" width="1.1" height="15.0" fill="rgb(234,137,32)" rx="2" ry="2" />
+<text  x="15.19" y="351.5" ></text>
+</g>
+<g >
+<title>arrow::PoolBuffer::MakeUnique (1,001,001 samples, 0.09%)</title><rect x="266.8" y="341" width="1.1" height="15.0" fill="rgb(248,199,47)" rx="2" ry="2" />
+<text  x="269.76" y="351.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="197" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1135.09" y="207.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="229" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1135.09" y="239.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="12.2" y="325" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="15.19" y="335.5" ></text>
+</g>
+<g >
+<title>handle_softirqs (1,001,001 samples, 0.09%)</title><rect x="770.4" y="261" width="1.1" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="773.44" y="271.5" ></text>
+</g>
+<g >
+<title>std::__y1::__murmur2_or_cityhash&lt;unsigned long, 64ul&gt;::operator (1,001,001 samples, 0.09%)</title><rect x="921.2" y="229" width="1.1" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
+<text  x="924.22" y="239.5" ></text>
+</g>
+<g >
+<title>unmap_page_range (5,005,005 samples, 0.46%)</title><rect x="1175.8" y="149" width="5.5" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1178.80" y="159.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="245" width="1.1" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1153.67" y="255.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TListRepresentation&lt;NYql::NUdf::TUnboxedValue, 48ul&gt;::TListRepresentation (46,046,046 samples, 4.26%)</title><rect x="1039.2" y="373" width="50.3" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="1042.22" y="383.5" >NKiki..</text>
+</g>
+<g >
+<title>irqentry_exit (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="309" width="1.1" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="1120.89" y="319.5" ></text>
+</g>
+<g >
+<title>tlb_finish_mmu (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="149" width="1.1" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="1153.67" y="159.5" ></text>
+</g>
+<g >
+<title>__madvise (1,001,001 samples, 0.09%)</title><rect x="968.2" y="245" width="1.1" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="971.20" y="255.5" ></text>
+</g>
+<g >
+<title>get_page_from_freelist (2,002,002 samples, 0.19%)</title><rect x="1067.6" y="149" width="2.2" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1070.63" y="159.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLArrowFree (1,001,001 samples, 0.09%)</title><rect x="921.2" y="261" width="1.1" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="924.22" y="271.5" ></text>
+</g>
+<g >
+<title>TCMallocInternalMalloc (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="341" width="1.1" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1050.96" y="351.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBuiltinFunctionRegistry::Register (1,001,001 samples, 0.09%)</title><rect x="971.5" y="197" width="1.1" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="974.48" y="207.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArrayBuilderBase::Add (10,010,010 samples, 0.93%)</title><rect x="1120.1" y="357" width="10.9" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="1123.07" y="367.5" ></text>
+</g>
+<g >
+<title>mas_wr_store_entry (1,001,001 samples, 0.09%)</title><rect x="1168.1" y="197" width="1.1" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="1171.15" y="207.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;int, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;int, false&gt; &gt;::DoReserve (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="325" width="1.1" height="15.0" fill="rgb(224,88,21)" rx="2" ry="2" />
+<text  x="1135.09" y="335.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (31,031,031 samples, 2.87%)</title><rect x="993.3" y="261" width="33.9" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="996.33" y="271.5" >ha..</text>
+</g>
+<g >
+<title>madvise_vma_behavior (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="181" width="1.1" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1153.67" y="191.5" ></text>
+</g>
+<g >
+<title>__mod_memcg_lruvec_state (1,001,001 samples, 0.09%)</title><rect x="1022.8" y="197" width="1.1" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="1025.83" y="207.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::~ArrayData (1,001,001 samples, 0.09%)</title><rect x="935.4" y="309" width="1.1" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="938.43" y="319.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::ShrinkCache (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="309" width="1.1" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="1041.13" y="319.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDirectArrayHolderInplace::GetElement (15,015,015 samples, 1.39%)</title><rect x="1102.6" y="357" width="16.4" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="1105.59" y="367.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map_lock (1,001,001 samples, 0.09%)</title><rect x="975.9" y="229" width="1.0" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="978.85" y="239.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="969.3" y="261" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="972.30" y="271.5" ></text>
+</g>
+<g >
+<title>unsigned long std::__y1::uniform_int_distribution&lt;unsigned long&gt;::operator (11,011,011 samples, 1.02%)</title><rect x="1151.8" y="373" width="12.0" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="1154.76" y="383.5" ></text>
+</g>
+<g >
+<title>zap_pmd_range.isra.0 (1,001,001 samples, 0.09%)</title><rect x="968.2" y="85" width="1.1" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="971.20" y="95.5" ></text>
+</g>
+<g >
+<title>__mem_cgroup_charge (1,001,001 samples, 0.09%)</title><rect x="1125.5" y="197" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1128.54" y="207.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (2,002,002 samples, 0.19%)</title><rect x="491.8" y="229" width="2.2" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="494.83" y="239.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TPackResult::~TPackResult (1,001,001 samples, 0.09%)</title><rect x="876.4" y="341" width="1.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="879.43" y="351.5" ></text>
+</g>
+<g >
+<title>arrow::util::detail::VariantImpl&lt;arrow::util::Variant&lt;arrow::Datum::Empty, std::__y1::shared_ptr&lt;arrow::Scalar&gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt;, arrow::Datum::Empty, std::__y1::shared_ptr&lt;arrow::Scalar&gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt;::destroy (6,006,006 samples, 0.56%)</title><rect x="917.9" y="325" width="6.6" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="920.94" y="335.5" ></text>
+</g>
+<g >
+<title>__madvise (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="277" width="1.1" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="1153.67" y="287.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TTypedBufferBuilder&lt;unsigned short&gt;::Reserve (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="309" width="2.2" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="1137.28" y="319.5" ></text>
+</g>
+<g >
+<title>vma_alloc_folio_noprof (5,005,005 samples, 0.46%)</title><rect x="1013.0" y="213" width="5.5" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1016.00" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TPackResult::AppendTuple (1,001,001 samples, 0.09%)</title><rect x="875.3" y="341" width="1.1" height="15.0" fill="rgb(229,110,26)" rx="2" ry="2" />
+<text  x="878.33" y="351.5" ></text>
+</g>
+<g >
+<title>blk_update_request (1,001,001 samples, 0.09%)</title><rect x="848.0" y="197" width="1.1" height="15.0" fill="rgb(241,166,39)" rx="2" ry="2" />
+<text  x="851.02" y="207.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="229" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="239.5" ></text>
+</g>
+<g >
+<title>unmap_vmas (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="181" width="1.1" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="1187.54" y="191.5" ></text>
+</g>
+<g >
+<title>folio_wake_bit (1,001,001 samples, 0.09%)</title><rect x="848.0" y="117" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="851.02" y="127.5" ></text>
+</g>
+<g >
+<title>blk_complete_reqs (1,001,001 samples, 0.09%)</title><rect x="848.0" y="245" width="1.1" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="851.02" y="255.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (4,004,004 samples, 0.37%)</title><rect x="974.8" y="325" width="4.3" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="977.76" y="335.5" ></text>
+</g>
+<g >
+<title>ossl_init_load_crypto_strings_ossl_ (1,001,001 samples, 0.09%)</title><rect x="10.0" y="389" width="1.1" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="13.00" y="399.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::THolderFactory::CreateArrowBlock (19,019,019 samples, 1.76%)</title><rect x="924.5" y="341" width="20.8" height="15.0" fill="rgb(211,28,6)" rx="2" ry="2" />
+<text  x="927.50" y="351.5" ></text>
+</g>
+<g >
+<title>zap_pmd_range.isra.0 (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="101" width="1.1" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="1041.13" y="111.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="969.3" y="229" width="1.1" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="972.30" y="239.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (1,001,001 samples, 0.09%)</title><rect x="983.5" y="213" width="1.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="986.50" y="223.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1,001,001 samples, 0.09%)</title><rect x="1169.2" y="117" width="1.1" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1172.24" y="127.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (38,038,038 samples, 3.52%)</title><rect x="985.7" y="309" width="41.5" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="988.69" y="319.5" >do_..</text>
+</g>
+<g >
+<title>handle_pte_fault (11,011,011 samples, 1.02%)</title><rect x="1058.9" y="261" width="12.0" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1061.89" y="271.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TTypedBufferBuilder&lt;int&gt;::Reserve (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="309" width="1.1" height="15.0" fill="rgb(225,94,22)" rx="2" ry="2" />
+<text  x="1135.09" y="319.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,001,001 samples, 0.09%)</title><rect x="968.2" y="229" width="1.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="971.20" y="239.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NJoinPackedTuples::THybridHashJoin&lt;NKikimr::NMiniKQL::(anonymous namespace)::TBlockPackedTupleSource, NKikimr::NMiniKQL::TSpillerSettings{64, 65536, 8}, NKikimr::NMiniKQL::TPhysicalJoin{ (5,005,005 samples, 0.46%)</title><rect x="888.4" y="357" width="5.5" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="891.44" y="367.5" ></text>
+</g>
+<g >
+<title>v1_OPENSSL_LH_insert (1,001,001 samples, 0.09%)</title><rect x="10.0" y="309" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="13.00" y="319.5" ></text>
+</g>
+<g >
+<title>vms_gather_munmap_vmas (1,001,001 samples, 0.09%)</title><rect x="1181.3" y="213" width="1.1" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="1184.26" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NJoinPackedTuples::THybridHashJoin&lt;NKikimr::NMiniKQL::(anonymous namespace)::TBlockPackedTupleSource, NKikimr::NMiniKQL::TSpillerSettings{64, 65536, 8}, NKikimr::NMiniKQL::TPhysicalJoin{ (311,311,311 samples, 28.80%)</title><rect x="509.3" y="341" width="339.8" height="15.0" fill="rgb(236,146,34)" rx="2" ry="2" />
+<text  x="512.31" y="351.5" >NKikimr::NMiniKQL::NJoinPackedTuples::THybrid..</text>
+</g>
+<g >
+<title>do_anonymous_page (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="229" width="2.2" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1127.44" y="239.5" ></text>
+</g>
+<g >
+<title>finish_task_switch.isra.0 (2,002,002 samples, 0.19%)</title><rect x="254.7" y="213" width="2.2" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="257.74" y="223.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="1088.4" y="341" width="1.1" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="1091.39" y="351.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::GatherUnpack (91,091,091 samples, 8.43%)</title><rect x="70.1" y="325" width="99.4" height="15.0" fill="rgb(251,215,51)" rx="2" ry="2" />
+<text  x="73.09" y="335.5" >NKikimr::NMi..</text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::ConvertYqlOffsetsToArrowStandard (1,001,001 samples, 0.09%)</title><rect x="925.6" y="309" width="1.1" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="928.59" y="319.5" ></text>
+</g>
+<g >
+<title>page_counter_try_charge (1,001,001 samples, 0.09%)</title><rect x="1010.8" y="181" width="1.1" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1013.81" y="191.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="229" width="2.2" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1131.81" y="239.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="309" width="15.3" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1171.15" y="319.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::TNeumannHashTable&lt;false, false&gt;::GetRowMatch (7,007,007 samples, 0.65%)</title><rect x="853.5" y="341" width="7.6" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="856.48" y="351.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArgsDechunker::TArgsDechunker (1,001,001 samples, 0.09%)</title><rect x="934.3" y="309" width="1.1" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="937.33" y="319.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::Static::SlowInitIfNecessary (1,001,001 samples, 0.09%)</title><rect x="14.4" y="325" width="1.1" height="15.0" fill="rgb(228,109,26)" rx="2" ry="2" />
+<text  x="17.37" y="335.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TFromWideFlowWrapper::TStreamValue::WideFetch (1,001,001 samples, 0.09%)</title><rect x="503.9" y="325" width="1.0" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="506.85" y="335.5" ></text>
+</g>
+<g >
+<title>arrow::Status arrow::VisitTypeInline&lt;arrow::internal::(anonymous namespace)::ValidateArrayImpl&gt; (1,001,001 samples, 0.09%)</title><rect x="937.6" y="293" width="1.1" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="940.61" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::AddBinaryKernelImpl (1,001,001 samples, 0.09%)</title><rect x="972.6" y="309" width="1.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="975.57" y="319.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="293" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1092.48" y="303.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::New (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="309" width="1.1" height="15.0" fill="rgb(211,32,7)" rx="2" ry="2" />
+<text  x="1050.96" y="319.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArgsDechunker::Next (7,007,007 samples, 0.65%)</title><rect x="926.7" y="309" width="7.6" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="929.69" y="319.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map_lock (1,001,001 samples, 0.09%)</title><rect x="1058.9" y="229" width="1.1" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="1061.89" y="239.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::MallocOomPolicy, tcmalloc::tcmalloc_internal::MallocAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::MallocOomPolicy, tcmalloc::tcmalloc_internal::MallocAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="502.8" y="261" width="1.1" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="505.76" y="271.5" ></text>
+</g>
+<g >
+<title>alloc_anon_folio (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="213" width="2.2" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1131.81" y="223.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;unsigned short, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;unsigned short, false&gt; &gt;::DoBuildTree (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="341" width="2.2" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1137.28" y="351.5" ></text>
+</g>
+<g >
+<title>pte_offset_map_nolock (2,002,002 samples, 0.19%)</title><rect x="1025.0" y="245" width="2.2" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="1028.02" y="255.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::ThreadCache::DeallocateSlow (1,001,001 samples, 0.09%)</title><rect x="12.2" y="309" width="1.1" height="15.0" fill="rgb(229,112,26)" rx="2" ry="2" />
+<text  x="15.19" y="319.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TArrowBlock::~TArrowBlock (7,007,007 samples, 0.65%)</title><rect x="916.9" y="341" width="7.6" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="919.85" y="351.5" ></text>
+</g>
+<g >
+<title>__rcu_read_unlock (1,001,001 samples, 0.09%)</title><rect x="974.8" y="261" width="1.1" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="977.76" y="271.5" ></text>
+</g>
+<g >
+<title>__memmove_avx512_unaligned_erms (80,080,080 samples, 7.41%)</title><rect x="169.5" y="325" width="87.4" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="172.52" y="335.5" >__memmove_..</text>
+</g>
+<g >
+<title>__handle_mm_fault (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="261" width="2.2" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1127.44" y="271.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="932.1" y="245" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="935.15" y="255.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="229" width="1.1" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1041.13" y="239.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TStringColumnDataExtractor&lt;arrow::BinaryType, false&gt;::ReserveArray (3,003,003 samples, 0.28%)</title><rect x="65.7" y="325" width="3.3" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="68.72" y="335.5" ></text>
+</g>
+<g >
+<title>std::__y1::unique_ptr&lt;arrow::ResizableBuffer, std::__y1::default_delete&lt;arrow::ResizableBuffer&gt; &gt; NYql::NUdf::AllocateResizableBuffer&lt;NYql::NUdf::TResizeableBuffer&gt; (3,003,003 samples, 0.28%)</title><rect x="65.7" y="293" width="3.3" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="68.72" y="303.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (31,031,031 samples, 2.87%)</title><rect x="993.3" y="293" width="33.9" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="996.33" y="303.5" >ha..</text>
+</g>
+<g >
+<title>alloc_anon_folio (1,001,001 samples, 0.09%)</title><rect x="1125.5" y="213" width="1.1" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1128.54" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLArrowAllocate (1,001,001 samples, 0.09%)</title><rect x="65.7" y="245" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="68.72" y="255.5" ></text>
+</g>
+<g >
+<title>__rcu_read_unlock (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="277" width="1.1" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="1092.48" y="287.5" ></text>
+</g>
+<g >
+<title>unmap_page_range (1,001,001 samples, 0.09%)</title><rect x="968.2" y="101" width="1.1" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="971.20" y="111.5" ></text>
+</g>
+<g >
+<title>clock_gettime@@GLIBC_2.17 (1,001,001 samples, 0.09%)</title><rect x="972.6" y="197" width="1.1" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="975.57" y="207.5" ></text>
+</g>
+<g >
+<title>__x64_sys_madvise (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="213" width="1.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1153.67" y="223.5" ></text>
+</g>
+<g >
+<title>std::__y1::__function::__func&lt;NKikimr::NMiniKQL::ToWideStream (1,001,001 samples, 0.09%)</title><rect x="969.3" y="325" width="1.1" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="972.30" y="335.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="261" width="2.2" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1131.81" y="271.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TYqlMemoryPool::Free (1,001,001 samples, 0.09%)</title><rect x="923.4" y="261" width="1.1" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="926.41" y="271.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="293" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1120.89" y="303.5" ></text>
+</g>
+<g >
+<title>rmqueue.constprop.0 (4,004,004 samples, 0.37%)</title><rect x="1014.1" y="133" width="4.4" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="1017.09" y="143.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::(anonymous namespace)::InvokeHooksAndFreePages (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="357" width="1.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1153.67" y="367.5" ></text>
+</g>
+<g >
+<title>__x64_sys_madvise (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="197" width="1.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1041.13" y="207.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (19,019,019 samples, 1.76%)</title><rect x="1050.1" y="325" width="20.8" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1053.15" y="335.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::central_freelist_internal::StaticForwarder::AllocateSpan (1,001,001 samples, 0.09%)</title><rect x="13.3" y="309" width="1.1" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="16.28" y="319.5" ></text>
+</g>
+<g >
+<title>madvise_vma_behavior (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="165" width="1.1" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1041.13" y="175.5" ></text>
+</g>
+<g >
+<title>common_interrupt (1,001,001 samples, 0.09%)</title><rect x="263.5" y="293" width="1.1" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="266.48" y="303.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="213" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1135.09" y="223.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::ParseCpulist (1,001,001 samples, 0.09%)</title><rect x="14.4" y="277" width="1.1" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="17.37" y="287.5" ></text>
+</g>
+<g >
+<title>arrow::CPUDevice::memory_manager (2,002,002 samples, 0.19%)</title><rect x="66.8" y="277" width="2.2" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="69.81" y="287.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;int, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;int, false&gt; &gt;::DoAdd (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="341" width="2.2" height="15.0" fill="rgb(241,165,39)" rx="2" ry="2" />
+<text  x="1127.44" y="351.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (3,003,003 samples, 0.28%)</title><rect x="975.9" y="245" width="3.2" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="978.85" y="255.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_reschedule_ipi (3,003,003 samples, 0.28%)</title><rect x="253.6" y="309" width="3.3" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="256.65" y="319.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::ShrinkCache (1,001,001 samples, 0.09%)</title><rect x="968.2" y="293" width="1.1" height="15.0" fill="rgb(237,147,35)" rx="2" ry="2" />
+<text  x="971.20" y="303.5" ></text>
+</g>
+<g >
+<title>do_madvise.part.0 (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="197" width="1.1" height="15.0" fill="rgb(233,133,31)" rx="2" ry="2" />
+<text  x="1153.67" y="207.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TYqlMemoryPool::Allocate (1,001,001 samples, 0.09%)</title><rect x="65.7" y="261" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="68.72" y="271.5" ></text>
+</g>
+<g >
+<title>mas_store_gfp (1,001,001 samples, 0.09%)</title><rect x="1168.1" y="213" width="1.1" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="1171.15" y="223.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="969.3" y="245" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="972.30" y="255.5" ></text>
+</g>
+<g >
+<title>arrow::compute::Kernel::Kernel (1,001,001 samples, 0.09%)</title><rect x="972.6" y="261" width="1.1" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="975.57" y="271.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map (1,001,001 samples, 0.09%)</title><rect x="1026.1" y="229" width="1.1" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="1029.11" y="239.5" ></text>
+</g>
+<g >
+<title>void* NKikimr::GetAlignedPage&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="65.7" y="229" width="1.1" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="68.72" y="239.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::Sampler::RecordAllocationSlow (1,001,001 samples, 0.09%)</title><rect x="14.4" y="357" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="17.37" y="367.5" ></text>
+</g>
+<g >
+<title>__madvise (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="261" width="1.1" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="1041.13" y="271.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="11.1" y="405" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="14.09" y="415.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::slow_alloc_small&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="942.0" y="309" width="1.1" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="944.98" y="319.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TYqlMemoryPool::Allocate (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="261" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1135.09" y="271.5" ></text>
+</g>
+<g >
+<title>v1_ERR_load_ERR_strings (1,001,001 samples, 0.09%)</title><rect x="10.0" y="325" width="1.1" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="13.00" y="335.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1140.8" y="357" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1143.83" y="367.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TResizeableBuffer::Reserve (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="277" width="1.1" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="1135.09" y="287.5" ></text>
+</g>
+<g >
+<title>vma_alloc_folio_noprof (2,002,002 samples, 0.19%)</title><rect x="976.9" y="213" width="2.2" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="979.94" y="223.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::LockAndAlloc (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="293" width="1.1" height="15.0" fill="rgb(250,207,49)" rx="2" ry="2" />
+<text  x="1050.96" y="303.5" ></text>
+</g>
+<g >
+<title>finish_task_switch.isra.0 (1,001,001 samples, 0.09%)</title><rect x="892.8" y="245" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="895.81" y="255.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TProgramBuilder::ExpandMap (1,001,001 samples, 0.09%)</title><rect x="969.3" y="341" width="1.1" height="15.0" fill="rgb(208,14,3)" rx="2" ry="2" />
+<text  x="972.30" y="351.5" ></text>
+</g>
+<g >
+<title>Sprintf (1,001,001 samples, 0.09%)</title><rect x="1163.8" y="389" width="1.1" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="1166.78" y="399.5" ></text>
+</g>
+<g >
+<title>do_vmi_munmap (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="245" width="15.3" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="1171.15" y="255.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::AllocateBitmapWithReserve (1,001,001 samples, 0.09%)</title><rect x="1133.2" y="309" width="1.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1136.19" y="319.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NJoinTable::TNeumannJoinTable::MarkUsed (1,001,001 samples, 0.09%)</title><rect x="771.5" y="325" width="1.1" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="774.54" y="335.5" ></text>
+</g>
+<g >
+<title>zap_present_ptes (4,004,004 samples, 0.37%)</title><rect x="1176.9" y="101" width="4.4" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="1179.89" y="111.5" ></text>
+</g>
+<g >
+<title>zap_pte_range (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="117" width="1.1" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1187.54" y="127.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::RegisterMod (1,001,001 samples, 0.09%)</title><rect x="972.6" y="325" width="1.1" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="975.57" y="335.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="309" width="3.2" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1124.17" y="319.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="309" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1092.48" y="319.5" ></text>
+</g>
+<g >
+<title>void NKikimr::ReleaseAlignedPage&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="923.4" y="229" width="1.1" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="926.41" y="239.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugePageFiller&lt;tcmalloc::tcmalloc_internal::PageTracker&gt;::Put (1,001,001 samples, 0.09%)</title><rect x="876.4" y="277" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="879.43" y="287.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="262.4" y="309" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="265.39" y="319.5" ></text>
+</g>
+<g >
+<title>__schedule (2,002,002 samples, 0.19%)</title><rect x="254.7" y="229" width="2.2" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="257.74" y="239.5" ></text>
+</g>
+<g >
+<title>virtblk_request_done (1,001,001 samples, 0.09%)</title><rect x="848.0" y="229" width="1.1" height="15.0" fill="rgb(242,172,41)" rx="2" ry="2" />
+<text  x="851.02" y="239.5" ></text>
+</g>
+<g >
+<title>vma_complete (1,001,001 samples, 0.09%)</title><rect x="1187.8" y="181" width="1.1" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="1190.81" y="191.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TResizeableBuffer::Reserve (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="277" width="2.2" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="1137.28" y="287.5" ></text>
+</g>
+<g >
+<title>access_error (1,001,001 samples, 0.09%)</title><rect x="984.6" y="309" width="1.1" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="987.59" y="319.5" ></text>
+</g>
+<g >
+<title>do_madvise.part.0 (1,001,001 samples, 0.09%)</title><rect x="968.2" y="165" width="1.1" height="15.0" fill="rgb(233,133,31)" rx="2" ry="2" />
+<text  x="971.20" y="175.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::ThreadCache::DeallocateSlow (1,001,001 samples, 0.09%)</title><rect x="967.1" y="261" width="1.1" height="15.0" fill="rgb(229,112,26)" rx="2" ry="2" />
+<text  x="970.11" y="271.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::MakeDenseBitmap (1,001,001 samples, 0.09%)</title><rect x="1133.2" y="325" width="1.1" height="15.0" fill="rgb(227,101,24)" rx="2" ry="2" />
+<text  x="1136.19" y="335.5" ></text>
+</g>
+<g >
+<title>madvise_vma_behavior (1,001,001 samples, 0.09%)</title><rect x="968.2" y="149" width="1.1" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="971.20" y="159.5" ></text>
+</g>
+<g >
+<title>__memmove_avx512_unaligned_erms (1,001,001 samples, 0.09%)</title><rect x="494.0" y="309" width="1.1" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="497.02" y="319.5" ></text>
+</g>
+<g >
+<title>mas_walk (1,001,001 samples, 0.09%)</title><rect x="1135.4" y="165" width="1.1" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="1138.37" y="175.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TPackResult::AllocatedBytes (13,013,013 samples, 1.20%)</title><rect x="861.1" y="341" width="14.2" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="864.13" y="351.5" ></text>
+</g>
+<g >
+<title>vms_complete_munmap_vmas (11,011,011 samples, 1.02%)</title><rect x="1169.2" y="213" width="12.1" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="1172.24" y="223.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1135.4" y="229" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1138.37" y="239.5" ></text>
+</g>
+<g >
+<title>zap_page_range_single (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="149" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="1041.13" y="159.5" ></text>
+</g>
+<g >
+<title>bool NKikimr::NMiniKQL::TBucket::DetatchBuildingPageIfLimitReached&lt;65536&gt; (1,001,001 samples, 0.09%)</title><rect x="887.4" y="341" width="1.0" height="15.0" fill="rgb(244,183,43)" rx="2" ry="2" />
+<text  x="890.35" y="351.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="268.9" y="341" width="1.1" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="271.94" y="351.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (1,001,001 samples, 0.09%)</title><rect x="848.0" y="213" width="1.1" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="851.02" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLAllocWithSize (1,001,001 samples, 0.09%)</title><rect x="502.8" y="293" width="1.1" height="15.0" fill="rgb(236,145,34)" rx="2" ry="2" />
+<text  x="505.76" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::ConstructJoinGraphStream (1,001,001 samples, 0.09%)</title><rect x="969.3" y="373" width="1.1" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="972.30" y="383.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBuiltinFunctionRegistry::~TBuiltinFunctionRegistry (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="357" width="1.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1092.48" y="367.5" ></text>
+</g>
+<g >
+<title>irqentry_exit (1,001,001 samples, 0.09%)</title><rect x="1088.4" y="309" width="1.1" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="1091.39" y="319.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TRenamesPackedTupleOutput&lt;NKikimr::NMiniKQL::TPhysicalJoin{ (199,199,199 samples, 18.43%)</title><rect x="52.6" y="357" width="217.4" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="55.61" y="367.5" >NKikimr::NMiniKQL::(anonymou..</text>
+</g>
+<g >
+<title>_raw_spin_lock (1,001,001 samples, 0.09%)</title><rect x="1124.4" y="213" width="1.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1127.44" y="223.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;double, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;double, false&gt; &gt;::DoBuildTree (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="341" width="1.1" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="1134.00" y="351.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TListChunk&lt;NYql::NUdf::TUnboxedValue&gt;::AllocateChunk (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="357" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="1050.96" y="367.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TRenamesPackedTupleOutput&lt;NKikimr::NMiniKQL::TPhysicalJoin{ (106,106,106 samples, 9.81%)</title><rect x="655.7" y="325" width="115.8" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="658.72" y="335.5" >NKikimr::NMini..</text>
+</g>
+<g >
+<title>__alloc_pages_noprof (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="149" width="2.2" height="15.0" fill="rgb(205,4,1)" rx="2" ry="2" />
+<text  x="1131.81" y="159.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="85" width="1.1" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1153.67" y="95.5" ></text>
+</g>
+<g >
+<title>alloc_pages_mpol_noprof (5,005,005 samples, 0.46%)</title><rect x="1013.0" y="181" width="5.5" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="1016.00" y="191.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::ArrayData (1,001,001 samples, 0.09%)</title><rect x="264.6" y="325" width="1.1" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="267.57" y="335.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (1,001,001 samples, 0.09%)</title><rect x="1060.0" y="229" width="1.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1062.98" y="239.5" ></text>
+</g>
+<g >
+<title>zap_pmd_range.isra.0 (5,005,005 samples, 0.46%)</title><rect x="1175.8" y="133" width="5.5" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="1178.80" y="143.5" ></text>
+</g>
+<g >
+<title>__mem_cgroup_charge (1,001,001 samples, 0.09%)</title><rect x="969.3" y="149" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="972.30" y="159.5" ></text>
+</g>
+<g >
+<title>schedule (1,001,001 samples, 0.09%)</title><rect x="492.9" y="213" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="495.93" y="223.5" ></text>
+</g>
+<g >
+<title>operator new[] (1,001,001 samples, 0.09%)</title><rect x="944.2" y="325" width="1.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="947.17" y="335.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::ThreadCache::FetchFromTransferCache (1,001,001 samples, 0.09%)</title><rect x="13.3" y="357" width="1.1" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="16.28" y="367.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (4,004,004 samples, 0.37%)</title><rect x="974.8" y="293" width="4.3" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="977.76" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TPackResult::AllocatedBytes (5,005,005 samples, 0.46%)</title><rect x="893.9" y="357" width="5.5" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="896.91" y="367.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="373" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="1153.67" y="383.5" ></text>
+</g>
+<g >
+<title>arrow::util::detail::VariantImpl&lt;arrow::util::Variant&lt;arrow::Datum::Empty, std::__y1::shared_ptr&lt;arrow::Scalar&gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt;::destroy (2,002,002 samples, 0.19%)</title><rect x="938.7" y="309" width="2.2" height="15.0" fill="rgb(219,65,15)" rx="2" ry="2" />
+<text  x="941.70" y="319.5" ></text>
+</g>
+<g >
+<title>__folio_batch_add_and_move (2,002,002 samples, 0.19%)</title><rect x="1018.5" y="213" width="2.1" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="1021.46" y="223.5" ></text>
+</g>
+<g >
+<title>__split_vma (3,003,003 samples, 0.28%)</title><rect x="1185.6" y="197" width="3.3" height="15.0" fill="rgb(237,150,36)" rx="2" ry="2" />
+<text  x="1188.63" y="207.5" ></text>
+</g>
+<g >
+<title>TMappedFileInput::TMappedFileInput (1,001,001 samples, 0.09%)</title><rect x="1164.9" y="389" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1167.87" y="399.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="117" width="1.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1134.00" y="127.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::SystemAllocator&lt;tcmalloc::tcmalloc_internal::NumaTopology&lt;1ul, 89ul&gt; &gt;::Release (1,001,001 samples, 0.09%)</title><rect x="968.2" y="261" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="971.20" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBlockPackedTupleSource::FetchRow (105,105,105 samples, 9.72%)</title><rect x="390.2" y="341" width="114.7" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="393.22" y="351.5" >NKikimr::NMini..</text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (1,001,001 samples, 0.09%)</title><rect x="1183.4" y="117" width="1.1" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1186.44" y="127.5" ></text>
+</g>
+<g >
+<title>__rcu_read_unlock (1,001,001 samples, 0.09%)</title><rect x="1011.9" y="213" width="1.1" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="1014.91" y="223.5" ></text>
+</g>
+<g >
+<title>folio_add_new_anon_rmap (1,001,001 samples, 0.09%)</title><rect x="1069.8" y="229" width="1.1" height="15.0" fill="rgb(233,133,31)" rx="2" ry="2" />
+<text  x="1072.81" y="239.5" ></text>
+</g>
+<g >
+<title>mpage_end_io (1,001,001 samples, 0.09%)</title><rect x="848.0" y="165" width="1.1" height="15.0" fill="rgb(209,21,5)" rx="2" ry="2" />
+<text  x="851.02" y="175.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="181" width="1.1" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="1135.09" y="191.5" ></text>
+</g>
+<g >
+<title>folio_batch_move_lru (2,002,002 samples, 0.19%)</title><rect x="1018.5" y="197" width="2.1" height="15.0" fill="rgb(207,10,2)" rx="2" ry="2" />
+<text  x="1021.46" y="207.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="293" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::RegisterGreaterOrEqual (1,001,001 samples, 0.09%)</title><rect x="971.5" y="325" width="1.1" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="974.48" y="335.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (1,001,001 samples, 0.09%)</title><rect x="263.5" y="261" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="266.48" y="271.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="293" width="6.6" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1186.44" y="303.5" ></text>
+</g>
+<g >
+<title>__munmap (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="341" width="15.3" height="15.0" fill="rgb(211,29,7)" rx="2" ry="2" />
+<text  x="1171.15" y="351.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="357" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="1041.13" y="367.5" ></text>
+</g>
+<g >
+<title>arrow::internal::ValidateArray (1,001,001 samples, 0.09%)</title><rect x="937.6" y="309" width="1.1" height="15.0" fill="rgb(234,134,32)" rx="2" ry="2" />
+<text  x="940.61" y="319.5" ></text>
+</g>
+<g >
+<title>__tlb_batch_free_encoded_pages (1,001,001 samples, 0.09%)</title><rect x="1169.2" y="165" width="1.1" height="15.0" fill="rgb(205,3,0)" rx="2" ry="2" />
+<text  x="1172.24" y="175.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (19,019,019 samples, 1.76%)</title><rect x="1050.1" y="309" width="20.8" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1053.15" y="319.5" ></text>
+</g>
+<g >
+<title>handle_softirqs (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="309" width="1.0" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="1140.56" y="319.5" ></text>
+</g>
+<g >
+<title>vms_clear_ptes.part.0 (11,011,011 samples, 1.02%)</title><rect x="1169.2" y="197" width="12.1" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1172.24" y="207.5" ></text>
+</g>
+<g >
+<title>__mem_cgroup_charge (4,004,004 samples, 0.37%)</title><rect x="1007.5" y="213" width="4.4" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1010.54" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLArrowAllocate (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="245" width="2.2" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="1137.28" y="255.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (39,039,039 samples, 3.61%)</title><rect x="984.6" y="325" width="42.6" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="987.59" y="335.5" >exc_..</text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::RegisterNotEquals (1,001,001 samples, 0.09%)</title><rect x="973.7" y="325" width="1.1" height="15.0" fill="rgb(245,184,44)" rx="2" ry="2" />
+<text  x="976.67" y="335.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::UnbackWithoutLock::operator (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="309" width="1.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1153.67" y="319.5" ></text>
+</g>
+<g >
+<title>zap_pmd_range.isra.0 (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="133" width="1.1" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="1187.54" y="143.5" ></text>
+</g>
+<g >
+<title>mas_update_gap.part.0 (1,001,001 samples, 0.09%)</title><rect x="1168.1" y="181" width="1.1" height="15.0" fill="rgb(253,221,52)" rx="2" ry="2" />
+<text  x="1171.15" y="191.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::central_freelist_internal::CentralFreeList&lt;tcmalloc::tcmalloc_internal::central_freelist_internal::StaticForwarder&gt;::InsertRange (1,001,001 samples, 0.09%)</title><rect x="967.1" y="229" width="1.1" height="15.0" fill="rgb(241,167,40)" rx="2" ry="2" />
+<text  x="970.11" y="239.5" ></text>
+</g>
+<g >
+<title>void NPrivate::Destroyer&lt;NKikimr::TGlobalPools&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;, true&gt; &gt; (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="405" width="6.6" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1186.44" y="415.5" ></text>
+</g>
+<g >
+<title>free_pages_and_swap_cache (1,001,001 samples, 0.09%)</title><rect x="1183.4" y="149" width="1.1" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="1186.44" y="159.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="229" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1134.00" y="239.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="181" width="1.1" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="1134.00" y="191.5" ></text>
+</g>
+<g >
+<title>vms_clear_ptes.part.0 (2,002,002 samples, 0.19%)</title><rect x="1183.4" y="197" width="2.2" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1186.44" y="207.5" ></text>
+</g>
+<g >
+<title>irqentry_exit (1,001,001 samples, 0.09%)</title><rect x="892.8" y="309" width="1.1" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="895.81" y="319.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;long, true, NYql::NUdf::TFixedSizeArrayBuilder&lt;long, true&gt; &gt;::DoBuildTree (1,001,001 samples, 0.09%)</title><rect x="1133.2" y="341" width="1.1" height="15.0" fill="rgb(228,110,26)" rx="2" ry="2" />
+<text  x="1136.19" y="351.5" ></text>
+</g>
+<g >
+<title>alloc_pages_mpol_noprof (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="165" width="2.2" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="1131.81" y="175.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="277" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="287.5" ></text>
+</g>
+<g >
+<title>void NPrivate::Destroyer&lt;NKikimr::TGlobalPools&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;, false&gt; &gt; (15,015,015 samples, 1.39%)</title><rect x="1167.1" y="405" width="16.3" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1170.06" y="415.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="181" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="17.37" y="191.5" ></text>
+</g>
+<g >
+<title>mod_objcg_state (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="197" width="1.0" height="15.0" fill="rgb(208,16,3)" rx="2" ry="2" />
+<text  x="1140.56" y="207.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map_lock (4,004,004 samples, 0.37%)</title><rect x="993.3" y="229" width="4.4" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="996.33" y="239.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="252.6" y="277" width="1.0" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="255.56" y="287.5" ></text>
+</g>
+<g >
+<title>folios_put_refs (1,001,001 samples, 0.09%)</title><rect x="1169.2" y="133" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1172.24" y="143.5" ></text>
+</g>
+<g >
+<title>std::__y1::unique_ptr&lt;arrow::ResizableBuffer, std::__y1::default_delete&lt;arrow::ResizableBuffer&gt; &gt; NYql::NUdf::AllocateResizableBuffer&lt;NYql::NUdf::TResizeableBuffer&gt; (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="293" width="1.1" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="1134.00" y="303.5" ></text>
+</g>
+<g >
+<title>filemap_map_pages (1,001,001 samples, 0.09%)</title><rect x="14.4" y="117" width="1.1" height="15.0" fill="rgb(229,112,27)" rx="2" ry="2" />
+<text  x="17.37" y="127.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::~ArrayData (1,001,001 samples, 0.09%)</title><rect x="967.1" y="293" width="1.1" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="970.11" y="303.5" ></text>
+</g>
+<g >
+<title>void std::__y1::__uninitialized_allocator_relocate[abi:ne210000]&lt;std::__y1::allocator&lt;arrow::Datum&gt;, arrow::Datum*&gt; (1,001,001 samples, 0.09%)</title><rect x="265.7" y="325" width="1.1" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="268.67" y="335.5" ></text>
+</g>
+<g >
+<title>__split_vma (1,001,001 samples, 0.09%)</title><rect x="1181.3" y="197" width="1.1" height="15.0" fill="rgb(237,150,36)" rx="2" ry="2" />
+<text  x="1184.26" y="207.5" ></text>
+</g>
+<g >
+<title>unmap_single_vma (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="165" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1187.54" y="175.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugePageFiller&lt;tcmalloc::tcmalloc_internal::PageTracker&gt;::UpdateFillerStatsTracker (1,001,001 samples, 0.09%)</title><rect x="13.3" y="245" width="1.1" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="16.28" y="255.5" ></text>
+</g>
+<g >
+<title>v1_ERR_load_strings_const (1,001,001 samples, 0.09%)</title><rect x="10.0" y="341" width="1.1" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="13.00" y="351.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::TupleDeepCopy (1,001,001 samples, 0.09%)</title><rect x="875.3" y="325" width="1.1" height="15.0" fill="rgb(242,174,41)" rx="2" ry="2" />
+<text  x="878.33" y="335.5" ></text>
+</g>
+<g >
+<title>bio_endio (1,001,001 samples, 0.09%)</title><rect x="848.0" y="181" width="1.1" height="15.0" fill="rgb(217,55,13)" rx="2" ry="2" />
+<text  x="851.02" y="191.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::New (1,001,001 samples, 0.09%)</title><rect x="13.3" y="293" width="1.1" height="15.0" fill="rgb(211,32,7)" rx="2" ry="2" />
+<text  x="16.28" y="303.5" ></text>
+</g>
+<g >
+<title>__run_exit_handlers (21,021,021 samples, 1.94%)</title><rect x="1167.1" y="421" width="22.9" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1170.06" y="431.5" >_..</text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::Release (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="341" width="1.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="1153.67" y="351.5" ></text>
+</g>
+<g >
+<title>vma_alloc_folio_noprof (5,005,005 samples, 0.46%)</title><rect x="1064.4" y="213" width="5.4" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1067.35" y="223.5" ></text>
+</g>
+<g >
+<title>schedule (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="277" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1120.89" y="287.5" ></text>
+</g>
+<g >
+<title>zap_pte_range (5,005,005 samples, 0.46%)</title><rect x="1175.8" y="117" width="5.5" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1178.80" y="127.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBlockLayoutConverter::Pack (104,104,104 samples, 9.63%)</title><rect x="390.2" y="325" width="113.7" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="393.22" y="335.5" >NKikimr::NMini..</text>
+</g>
+<g >
+<title>NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;::Munmap (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="357" width="6.6" height="15.0" fill="rgb(215,50,12)" rx="2" ry="2" />
+<text  x="1186.44" y="367.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (2,002,002 samples, 0.19%)</title><rect x="1122.3" y="213" width="2.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1125.26" y="223.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::UnbackWithoutLock::operator (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="293" width="1.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1041.13" y="303.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;double, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;double, false&gt; &gt;::DoAdd (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="341" width="3.2" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="1124.17" y="351.5" ></text>
+</g>
+<g >
+<title>__tlb_remove_folio_pages (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="85" width="1.1" height="15.0" fill="rgb(210,25,6)" rx="2" ry="2" />
+<text  x="1187.54" y="95.5" ></text>
+</g>
+<g >
+<title>zap_present_ptes (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="69" width="1.1" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="1041.13" y="79.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::GuardedPageAllocator::TrySample (1,001,001 samples, 0.09%)</title><rect x="502.8" y="229" width="1.1" height="15.0" fill="rgb(211,28,6)" rx="2" ry="2" />
+<text  x="505.76" y="239.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="876.4" y="325" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="879.43" y="335.5" ></text>
+</g>
+<g >
+<title>std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt;::__append (1,001,001 samples, 0.09%)</title><rect x="262.4" y="325" width="1.1" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="265.39" y="335.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TStatelessWideFlowComputationNode&lt;NKikimr::NMiniKQL::(anonymous namespace)::TExpandMapWrapper&gt;::FetchValues (1,001,001 samples, 0.09%)</title><rect x="503.9" y="309" width="1.0" height="15.0" fill="rgb(240,165,39)" rx="2" ry="2" />
+<text  x="506.85" y="319.5" ></text>
+</g>
+<g >
+<title>arrow::Scalar::~Scalar (1,001,001 samples, 0.09%)</title><rect x="916.9" y="325" width="1.0" height="15.0" fill="rgb(239,159,38)" rx="2" ry="2" />
+<text  x="919.85" y="335.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (1,001,001 samples, 0.09%)</title><rect x="968.2" y="197" width="1.1" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="971.20" y="207.5" ></text>
+</g>
+<g >
+<title>clear_page_erms (3,003,003 samples, 0.28%)</title><rect x="1064.4" y="149" width="3.2" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="1067.35" y="159.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBlockLayoutConverter::GatherUnpack (183,183,183 samples, 16.94%)</title><rect x="63.5" y="341" width="200.0" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="66.54" y="351.5" >NKikimr::NMiniKQL::(anonym..</text>
+</g>
+<g >
+<title>__handle_mm_fault (11,011,011 samples, 1.02%)</title><rect x="1058.9" y="277" width="12.0" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1061.89" y="287.5" ></text>
+</g>
+<g >
+<title>alloc_anon_folio (1,001,001 samples, 0.09%)</title><rect x="969.3" y="165" width="1.1" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="972.30" y="175.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::AddBinaryKernelImpl (1,001,001 samples, 0.09%)</title><rect x="973.7" y="309" width="1.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="976.67" y="319.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,001,001 samples, 0.09%)</title><rect x="968.2" y="213" width="1.1" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="971.20" y="223.5" ></text>
+</g>
+<g >
+<title>arrow::PoolBuffer::~PoolBuffer (1,001,001 samples, 0.09%)</title><rect x="923.4" y="277" width="1.1" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="926.41" y="287.5" ></text>
+</g>
+<g >
+<title>v1_err_load_crypto_strings_int (1,001,001 samples, 0.09%)</title><rect x="10.0" y="373" width="1.1" height="15.0" fill="rgb(242,170,40)" rx="2" ry="2" />
+<text  x="13.00" y="383.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="983.5" y="261" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="986.50" y="271.5" ></text>
+</g>
+<g >
+<title>memcpy@plt (1,001,001 samples, 0.09%)</title><rect x="501.7" y="309" width="1.1" height="15.0" fill="rgb(224,88,21)" rx="2" ry="2" />
+<text  x="504.67" y="319.5" ></text>
+</g>
+<g >
+<title>xas_load (1,001,001 samples, 0.09%)</title><rect x="14.4" y="69" width="1.1" height="15.0" fill="rgb(217,59,14)" rx="2" ry="2" />
+<text  x="17.37" y="79.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="925.6" y="293" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="928.59" y="303.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="252.6" y="309" width="1.0" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="255.56" y="319.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (29,029,029 samples, 2.69%)</title><rect x="993.3" y="245" width="31.7" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="996.33" y="255.5" >do..</text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TimeSeriesTracker&lt;tcmalloc::tcmalloc_internal::SubreleaseStatsTracker&lt;600ul&gt;::SubreleaseStatsEntry, tcmalloc::tcmalloc_internal::SubreleaseStatsTracker&lt;600ul&gt;::SubreleaseStats, 600ul&gt;::Report (1,001,001 samples, 0.09%)</title><rect x="876.4" y="245" width="1.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="879.43" y="255.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TSetup&lt;false, true&gt;::TSetup (3,003,003 samples, 0.28%)</title><rect x="971.5" y="357" width="3.3" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="974.48" y="367.5" ></text>
+</g>
+<g >
+<title>xas_find (1,001,001 samples, 0.09%)</title><rect x="14.4" y="85" width="1.1" height="15.0" fill="rgb(211,29,7)" rx="2" ry="2" />
+<text  x="17.37" y="95.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDirectArrayHolderInplace::operator delete (16,016,016 samples, 1.48%)</title><rect x="950.7" y="341" width="17.5" height="15.0" fill="rgb(230,115,27)" rx="2" ry="2" />
+<text  x="953.72" y="351.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="983.5" y="325" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="986.50" y="335.5" ></text>
+</g>
+<g >
+<title>vms_gather_munmap_vmas (4,004,004 samples, 0.37%)</title><rect x="1185.6" y="213" width="4.4" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="1188.63" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::EFetchResult NKikimr::NMiniKQL::NJoinPackedTuples::THybridHashJoin&lt;NKikimr::NMiniKQL::(anonymous namespace)::TBlockPackedTupleSource, NKikimr::NMiniKQL::TSpillerSettings{64, 65536, 8}, NKikimr::NMiniKQL::TPhysicalJoin{ (566,566,566 samples, 52.41%)</title><rect x="270.0" y="357" width="618.4" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="273.04" y="367.5" >NKikimr::NMiniKQL::EFetchResult NKikimr::NMiniKQL::NJoinPackedTuples::THybridHashJoin..</text>
+</g>
+<g >
+<title>get_free_pages_noprof (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="53" width="1.1" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="1187.54" y="63.5" ></text>
+</g>
+<g >
+<title>common_interrupt (1,001,001 samples, 0.09%)</title><rect x="770.4" y="293" width="1.1" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="773.44" y="303.5" ></text>
+</g>
+<g >
+<title>arrow::compute::ArrayKernel::ArrayKernel (1,001,001 samples, 0.09%)</title><rect x="972.6" y="277" width="1.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="975.57" y="287.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::(anonymous namespace)::InvokeHooksAndFreePages (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="341" width="1.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1041.13" y="351.5" ></text>
+</g>
+<g >
+<title>folio_end_read (1,001,001 samples, 0.09%)</title><rect x="848.0" y="133" width="1.1" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="851.02" y="143.5" ></text>
+</g>
+<g >
+<title>NKikimr::TGlobalPagePool&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;, true&gt;::~TGlobalPagePool (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="373" width="6.6" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1186.44" y="383.5" ></text>
+</g>
+<g >
+<title>__rcu_read_lock (1,001,001 samples, 0.09%)</title><rect x="1058.9" y="213" width="1.1" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="1061.89" y="223.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="229" width="3.2" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1124.17" y="239.5" ></text>
+</g>
+<g >
+<title>__schedule (1,001,001 samples, 0.09%)</title><rect x="892.8" y="261" width="1.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="895.81" y="271.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (3,003,003 samples, 0.28%)</title><rect x="975.9" y="261" width="3.2" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="978.85" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::CreateBuiltinRegistry (3,003,003 samples, 0.28%)</title><rect x="971.5" y="341" width="3.3" height="15.0" fill="rgb(238,153,36)" rx="2" ry="2" />
+<text  x="974.48" y="351.5" ></text>
+</g>
+<g >
+<title>handle_softirqs (1,001,001 samples, 0.09%)</title><rect x="848.0" y="277" width="1.1" height="15.0" fill="rgb(238,156,37)" rx="2" ry="2" />
+<text  x="851.02" y="287.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (19,019,019 samples, 1.76%)</title><rect x="1050.1" y="341" width="20.8" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1053.15" y="351.5" ></text>
+</g>
+<g >
+<title>arrow::AllocateBitmap (1,001,001 samples, 0.09%)</title><rect x="1133.2" y="293" width="1.1" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="1136.19" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDirectArrayHolderInplace::~TDirectArrayHolderInplace (1,001,001 samples, 0.09%)</title><rect x="946.4" y="357" width="1.0" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="949.35" y="367.5" ></text>
+</g>
+<g >
+<title>alloc_pages_mpol_noprof (2,002,002 samples, 0.19%)</title><rect x="976.9" y="181" width="2.2" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="979.94" y="191.5" ></text>
+</g>
+<g >
+<title>rmqueue_bulk (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="85" width="2.2" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="1131.81" y="95.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (2,002,002 samples, 0.19%)</title><rect x="1016.3" y="85" width="2.2" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1019.28" y="95.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBlockLayoutConverter::GetTupleLayout (1,001,001 samples, 0.09%)</title><rect x="389.1" y="341" width="1.1" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="392.13" y="351.5" ></text>
+</g>
+<g >
+<title>__schedule (1,001,001 samples, 0.09%)</title><rect x="263.5" y="229" width="1.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="266.48" y="239.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::sysinfo_internal::NumPossibleCPUsNoCache (1,001,001 samples, 0.09%)</title><rect x="14.4" y="293" width="1.1" height="15.0" fill="rgb(208,15,3)" rx="2" ry="2" />
+<text  x="17.37" y="303.5" ></text>
+</g>
+<g >
+<title>vm_area_dup (1,001,001 samples, 0.09%)</title><rect x="1186.7" y="181" width="1.1" height="15.0" fill="rgb(252,217,52)" rx="2" ry="2" />
+<text  x="1189.72" y="191.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="983.5" y="277" width="1.1" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="986.50" y="287.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (1,001,001 samples, 0.09%)</title><rect x="268.9" y="293" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="271.94" y="303.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="149" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1134.00" y="159.5" ></text>
+</g>
+<g >
+<title>asm_common_interrupt (1,001,001 samples, 0.09%)</title><rect x="848.0" y="325" width="1.1" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="851.02" y="335.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock_irqsave (1,001,001 samples, 0.09%)</title><rect x="1023.9" y="213" width="1.1" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="1026.93" y="223.5" ></text>
+</g>
+<g >
+<title>unmap_page_range (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="117" width="1.1" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1041.13" y="127.5" ></text>
+</g>
+<g >
+<title>NKikimr::TGlobalPagePool&lt;NKikimr::TTrackedMmap&lt;NKikimr::TSystemMmap&gt;, false&gt;::~TGlobalPagePool (15,015,015 samples, 1.39%)</title><rect x="1167.1" y="373" width="16.3" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="1170.06" y="383.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLAllocSlow (4,004,004 samples, 0.37%)</title><rect x="974.8" y="357" width="4.3" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="977.76" y="367.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::AllocLarge (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="277" width="1.1" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="1050.96" y="287.5" ></text>
+</g>
+<g >
+<title>get_page_from_freelist (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="133" width="2.2" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1131.81" y="143.5" ></text>
+</g>
+<g >
+<title>blk_done_softirq (1,001,001 samples, 0.09%)</title><rect x="848.0" y="261" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="851.02" y="271.5" ></text>
+</g>
+<g >
+<title>all (1,081,081,080 samples, 100%)</title><rect x="10.0" y="453" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="463.5" ></text>
+</g>
+<g >
+<title>__read_end_io (1,001,001 samples, 0.09%)</title><rect x="848.0" y="149" width="1.1" height="15.0" fill="rgb(242,174,41)" rx="2" ry="2" />
+<text  x="851.02" y="159.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="309" width="6.6" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1186.44" y="319.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::AllocAndContribute (1,001,001 samples, 0.09%)</title><rect x="13.3" y="261" width="1.1" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="16.28" y="271.5" ></text>
+</g>
+<g >
+<title>mas_leaf_max_gap (1,001,001 samples, 0.09%)</title><rect x="1168.1" y="165" width="1.1" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1171.15" y="175.5" ></text>
+</g>
+<g >
+<title>rmqueue.constprop.0 (2,002,002 samples, 0.19%)</title><rect x="976.9" y="133" width="2.2" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="979.94" y="143.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::MKQLArrowFree (1,001,001 samples, 0.09%)</title><rect x="923.4" y="245" width="1.1" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="926.41" y="255.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="245" width="1.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1041.13" y="255.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock_irqrestore (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="69" width="2.2" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="1131.81" y="79.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;int, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;int, false&gt; &gt;::DoBuildTree (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="341" width="1.1" height="15.0" fill="rgb(214,45,10)" rx="2" ry="2" />
+<text  x="1135.09" y="351.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1140.8" y="373" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1143.83" y="383.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TYqlMemoryPool::Free (1,001,001 samples, 0.09%)</title><rect x="921.2" y="277" width="1.1" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="924.22" y="287.5" ></text>
+</g>
+<g >
+<title>arrow::PoolBuffer::~PoolBuffer (1,001,001 samples, 0.09%)</title><rect x="923.4" y="293" width="1.1" height="15.0" fill="rgb(240,164,39)" rx="2" ry="2" />
+<text  x="926.41" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDqSetup&lt;false, true&gt;::TDqSetup (3,003,003 samples, 0.28%)</title><rect x="971.5" y="373" width="3.3" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="974.48" y="383.5" ></text>
+</g>
+<g >
+<title>free_pages_and_swap_cache (1,001,001 samples, 0.09%)</title><rect x="1169.2" y="149" width="1.1" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="1172.24" y="159.5" ></text>
+</g>
+<g >
+<title>try_charge_memcg (1,001,001 samples, 0.09%)</title><rect x="1010.8" y="197" width="1.1" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="1013.81" y="207.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TSetup&lt;false, true&gt;::~TSetup (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="373" width="1.1" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="1092.48" y="383.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TBlockHashJoinWrapper&lt;NKikimr::NMiniKQL::TPhysicalJoin{ (819,819,819 samples, 75.83%)</title><rect x="50.4" y="373" width="894.9" height="15.0" fill="rgb(224,88,21)" rx="2" ry="2" />
+<text  x="53.43" y="383.5" >NKikimr::NMiniKQL::(anonymous namespace)::TBlockHashJoinWrapper&lt;NKikimr::NMiniKQL::TPhysicalJoin{</text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="168.4" y="309" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="171.43" y="319.5" ></text>
+</g>
+<g >
+<title>mas_store_gfp (1,001,001 samples, 0.09%)</title><rect x="1188.9" y="197" width="1.1" height="15.0" fill="rgb(216,53,12)" rx="2" ry="2" />
+<text  x="1191.91" y="207.5" ></text>
+</g>
+<g >
+<title>void absl::lts_20260817::base_internal::CallOnceImpl&lt;tcmalloc::tcmalloc_internal::NumCPUsMaybe (1,001,001 samples, 0.09%)</title><rect x="14.4" y="309" width="1.1" height="15.0" fill="rgb(206,4,1)" rx="2" ry="2" />
+<text  x="17.37" y="319.5" ></text>
+</g>
+<g >
+<title>__sized_ptr_t tcmalloc::tcmalloc_internal::SampleifyAllocation&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="972.6" y="213" width="1.1" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="975.57" y="223.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TResizeableBuffer::Reserve (1,001,001 samples, 0.09%)</title><rect x="65.7" y="277" width="1.1" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="68.72" y="287.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::Release (1,001,001 samples, 0.09%)</title><rect x="968.2" y="309" width="1.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="971.20" y="319.5" ></text>
+</g>
+<g >
+<title>zap_pte_range (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="85" width="1.1" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1041.13" y="95.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TDirectListHolder::TIterator::Next (3,003,003 samples, 0.28%)</title><rect x="1099.3" y="357" width="3.3" height="15.0" fill="rgb(221,74,17)" rx="2" ry="2" />
+<text  x="1102.31" y="367.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TElementWrapper&lt; (1,001,001 samples, 0.09%)</title><rect x="503.9" y="277" width="1.0" height="15.0" fill="rgb(243,175,41)" rx="2" ry="2" />
+<text  x="506.85" y="287.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArgsDechunker::Next (1,001,001 samples, 0.09%)</title><rect x="1119.0" y="357" width="1.1" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="1121.98" y="367.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="293" width="3.2" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1124.17" y="303.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="117" width="1.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1135.09" y="127.5" ></text>
+</g>
+<g >
+<title>folio_alloc_mpol_noprof (5,005,005 samples, 0.46%)</title><rect x="1013.0" y="197" width="5.5" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="1016.00" y="207.5" ></text>
+</g>
+<g >
+<title>__rmqueue_pcplist (2,002,002 samples, 0.19%)</title><rect x="976.9" y="117" width="2.2" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="979.94" y="127.5" ></text>
+</g>
+<g >
+<title>lock_vma_under_rcu (1,001,001 samples, 0.09%)</title><rect x="1135.4" y="181" width="1.1" height="15.0" fill="rgb(251,211,50)" rx="2" ry="2" />
+<text  x="1138.37" y="191.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NJoinTable::TNeumannJoinTable::MarkUsed (4,004,004 samples, 0.37%)</title><rect x="849.1" y="341" width="4.4" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="852.11" y="351.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::~ArrayData (1,001,001 samples, 0.09%)</title><rect x="933.2" y="277" width="1.1" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="936.24" y="287.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TimeSeriesTracker&lt;tcmalloc::tcmalloc_internal::SubreleaseStatsTracker&lt;600ul&gt;::SubreleaseStatsEntry, tcmalloc::tcmalloc_internal::SubreleaseStatsTracker&lt;600ul&gt;::SubreleaseStats, 600ul&gt;::Report (1,001,001 samples, 0.09%)</title><rect x="13.3" y="229" width="1.1" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="16.28" y="239.5" ></text>
+</g>
+<g >
+<title>schedule (1,001,001 samples, 0.09%)</title><rect x="892.8" y="277" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="895.81" y="287.5" ></text>
+</g>
+<g >
+<title>__memset_avx512_unaligned_erms (6,006,006 samples, 0.56%)</title><rect x="495.1" y="309" width="6.6" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="498.11" y="319.5" ></text>
+</g>
+<g >
+<title>std::__y1::unique_ptr&lt;arrow::Buffer, std::__y1::default_delete&lt;arrow::Buffer&gt; &gt; NKikimr::NMiniKQL::(anonymous namespace)::MakeBufferWithSize&lt;NYql::NUdf::TResizeableBuffer&gt; (3,003,003 samples, 0.28%)</title><rect x="65.7" y="309" width="3.3" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="68.72" y="319.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="969.3" y="213" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="972.30" y="223.5" ></text>
+</g>
+<g >
+<title>percpu_counter_add_batch (1,001,001 samples, 0.09%)</title><rect x="1023.9" y="229" width="1.1" height="15.0" fill="rgb(241,166,39)" rx="2" ry="2" />
+<text  x="1026.93" y="239.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::Get (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="245" width="1.1" height="15.0" fill="rgb(224,89,21)" rx="2" ry="2" />
+<text  x="1050.96" y="255.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (9,009,009 samples, 0.83%)</title><rect x="997.7" y="229" width="9.8" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1000.70" y="239.5" ></text>
+</g>
+<g >
+<title>sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="892.8" y="325" width="1.1" height="15.0" fill="rgb(236,146,35)" rx="2" ry="2" />
+<text  x="895.81" y="335.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="325" width="2.2" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1131.81" y="335.5" ></text>
+</g>
+<g >
+<title>rcu_do_batch (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="261" width="1.0" height="15.0" fill="rgb(220,73,17)" rx="2" ry="2" />
+<text  x="1140.56" y="271.5" ></text>
+</g>
+<g >
+<title>__printf_buffer (1,001,001 samples, 0.09%)</title><rect x="1166.0" y="421" width="1.1" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="1168.96" y="431.5" ></text>
+</g>
+<g >
+<title>alloc_pages_mpol_noprof (5,005,005 samples, 0.46%)</title><rect x="1064.4" y="181" width="5.4" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="1067.35" y="191.5" ></text>
+</g>
+<g >
+<title>tlb_finish_mmu (1,001,001 samples, 0.09%)</title><rect x="1183.4" y="181" width="1.1" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="1186.44" y="191.5" ></text>
+</g>
+<g >
+<title>_raw_spin_lock (1,001,001 samples, 0.09%)</title><rect x="1175.8" y="101" width="1.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1178.80" y="111.5" ></text>
+</g>
+<g >
+<title>zap_present_ptes (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="101" width="1.1" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="1187.54" y="111.5" ></text>
+</g>
+<g >
+<title>get_page_from_freelist (5,005,005 samples, 0.46%)</title><rect x="1013.0" y="149" width="5.5" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="1016.00" y="159.5" ></text>
+</g>
+<g >
+<title>__folio_mod_stat (2,002,002 samples, 0.19%)</title><rect x="1021.7" y="213" width="2.2" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="1024.74" y="223.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="245" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="255.5" ></text>
+</g>
+<g >
+<title>std::__y1::__hash_memory (1,001,001 samples, 0.09%)</title><rect x="921.2" y="245" width="1.1" height="15.0" fill="rgb(251,211,50)" rx="2" ry="2" />
+<text  x="924.22" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,001,001 samples, 0.09%)</title><rect x="10.0" y="421" width="1.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="13.00" y="431.5" ></text>
+</g>
+<g >
+<title>__vm_munmap (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="261" width="6.6" height="15.0" fill="rgb(231,121,28)" rx="2" ry="2" />
+<text  x="1186.44" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TProbeSpiller&lt;NKikimr::NMiniKQL::TSpillerSettings{64, 65536, 8}&gt;::GetState (10,010,010 samples, 0.93%)</title><rect x="899.4" y="357" width="10.9" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="902.37" y="367.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="1135.4" y="197" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1138.37" y="207.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="972.6" y="229" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="975.57" y="239.5" ></text>
+</g>
+<g >
+<title>__mem_cgroup_charge (3,003,003 samples, 0.28%)</title><rect x="1061.1" y="213" width="3.3" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1064.07" y="223.5" ></text>
+</g>
+<g >
+<title>arrow::detail::CTypeImpl&lt;arrow::Int32Type, arrow::IntegerType,  (1,001,001 samples, 0.09%)</title><rect x="936.5" y="309" width="1.1" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="939.52" y="319.5" ></text>
+</g>
+<g >
+<title>arrow::util::detail::VariantImpl&lt;arrow::util::Variant&lt;arrow::Datum::Empty, std::__y1::shared_ptr&lt;arrow::Scalar&gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt;, arrow::Datum::Empty, std::__y1::shared_ptr&lt;arrow::Scalar&gt;, std::__y1::shared_ptr&lt;arrow::ArrayData&gt;, std::__y1::shared_ptr&lt;arrow::ChunkedArray&gt;, std::__y1::shared_ptr&lt;arrow::RecordBatch&gt;, std::__y1::shared_ptr&lt;arrow::Table&gt;, std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt; &gt;::destroy (1,001,001 samples, 0.09%)</title><rect x="967.1" y="309" width="1.1" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="970.11" y="319.5" ></text>
+</g>
+<g >
+<title>__lruvec_stat_mod_folio (1,001,001 samples, 0.09%)</title><rect x="1021.7" y="197" width="1.1" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="1024.74" y="207.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::central_freelist_internal::CentralFreeList&lt;tcmalloc::tcmalloc_internal::central_freelist_internal::StaticForwarder&gt;::RemoveRange (1,001,001 samples, 0.09%)</title><rect x="13.3" y="341" width="1.1" height="15.0" fill="rgb(236,145,34)" rx="2" ry="2" />
+<text  x="16.28" y="351.5" ></text>
+</g>
+<g >
+<title>rcu_core_si (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="293" width="1.0" height="15.0" fill="rgb(237,150,36)" rx="2" ry="2" />
+<text  x="1140.56" y="303.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (1,001,001 samples, 0.09%)</title><rect x="969.3" y="197" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="972.30" y="207.5" ></text>
+</g>
+<g >
+<title>arrow::compute::KernelSignature::Make (1,001,001 samples, 0.09%)</title><rect x="972.6" y="245" width="1.1" height="15.0" fill="rgb(225,95,22)" rx="2" ry="2" />
+<text  x="975.57" y="255.5" ></text>
+</g>
+<g >
+<title>irq_exit_rcu (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="325" width="1.0" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="1140.56" y="335.5" ></text>
+</g>
+<g >
+<title>rmqueue.constprop.0 (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="117" width="2.2" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="1131.81" y="127.5" ></text>
+</g>
+<g >
+<title>kmem_cache_alloc_noprof (1,001,001 samples, 0.09%)</title><rect x="1186.7" y="165" width="1.1" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="1189.72" y="175.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="245" width="2.2" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1127.44" y="255.5" ></text>
+</g>
+<g >
+<title>vms_complete_munmap_vmas (2,002,002 samples, 0.19%)</title><rect x="1183.4" y="213" width="2.2" height="15.0" fill="rgb(216,52,12)" rx="2" ry="2" />
+<text  x="1186.44" y="223.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="133" width="1.1" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1135.09" y="143.5" ></text>
+</g>
+<g >
+<title>TCMallocInternalMalloc (1,001,001 samples, 0.09%)</title><rect x="502.8" y="277" width="1.1" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="505.76" y="287.5" ></text>
+</g>
+<g >
+<title>unmap_single_vma (5,005,005 samples, 0.46%)</title><rect x="1175.8" y="165" width="5.5" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1178.80" y="175.5" ></text>
+</g>
+<g >
+<title>__alloc_pages_noprof (2,002,002 samples, 0.19%)</title><rect x="976.9" y="165" width="2.2" height="15.0" fill="rgb(205,4,1)" rx="2" ry="2" />
+<text  x="979.94" y="175.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="293" width="2.2" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1127.44" y="303.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="277" width="2.2" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="1131.81" y="287.5" ></text>
+</g>
+<g >
+<title>__tlb_remove_folio_pages_size.constprop.0 (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="69" width="1.1" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="1187.54" y="79.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::PackTupleFallbackColImpl (58,058,058 samples, 5.37%)</title><rect x="430.6" y="293" width="63.4" height="15.0" fill="rgb(218,59,14)" rx="2" ry="2" />
+<text  x="433.65" y="303.5" >NKikim..</text>
+</g>
+<g >
+<title>std::__y1::unique_ptr&lt;arrow::ResizableBuffer, std::__y1::default_delete&lt;arrow::ResizableBuffer&gt; &gt; NYql::NUdf::AllocateResizableBuffer&lt;NYql::NUdf::TResizeableBuffer&gt; (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="293" width="1.1" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="1135.09" y="303.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::IBoxedValue::IBoxedValue (1,001,001 samples, 0.09%)</title><rect x="983.5" y="341" width="1.1" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="986.50" y="351.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::RunJoinsBench (1,052,052,051 samples, 97.31%)</title><rect x="15.5" y="389" width="1148.3" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="18.46" y="399.5" >NKikimr::NMiniKQL::RunJoinsBench</text>
+</g>
+<g >
+<title>__schedule (1,001,001 samples, 0.09%)</title><rect x="492.9" y="197" width="1.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="495.93" y="207.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="165" width="1.1" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1134.00" y="175.5" ></text>
+</g>
+<g >
+<title>operator delete[] (1,001,001 samples, 0.09%)</title><rect x="968.2" y="341" width="1.1" height="15.0" fill="rgb(208,18,4)" rx="2" ry="2" />
+<text  x="971.20" y="351.5" ></text>
+</g>
+<g >
+<title>__list_del_entry_valid_or_report (2,002,002 samples, 0.19%)</title><rect x="1067.6" y="101" width="2.2" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="1070.63" y="111.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TFixedSizeColumnDataExtractor&lt;long, true&gt;::GetColumnsDataConst (1,001,001 samples, 0.09%)</title><rect x="393.5" y="293" width="1.1" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
+<text  x="396.50" y="303.5" ></text>
+</g>
+<g >
+<title>sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="325" width="1.1" height="15.0" fill="rgb(236,146,35)" rx="2" ry="2" />
+<text  x="1120.89" y="335.5" ></text>
+</g>
+<g >
+<title>__x64_sys_munmap (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="277" width="6.6" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1186.44" y="287.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::huge_page_allocator_internal::HugePageAwareAllocator&lt;tcmalloc::tcmalloc_internal::huge_page_allocator_internal::StaticForwarder&gt;::UnbackWithoutLock::operator (1,001,001 samples, 0.09%)</title><rect x="968.2" y="277" width="1.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="971.20" y="287.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="245" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="17.37" y="255.5" ></text>
+</g>
+<g >
+<title>arrow::CPUDevice::Instance (1,001,001 samples, 0.09%)</title><rect x="67.9" y="261" width="1.1" height="15.0" fill="rgb(253,221,52)" rx="2" ry="2" />
+<text  x="70.91" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDirectArrayHolderInplace::TDirectArrayHolderInplace (44,044,044 samples, 4.07%)</title><rect x="979.1" y="357" width="48.1" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="982.13" y="367.5" >NKik..</text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugePageFiller&lt;tcmalloc::tcmalloc_internal::PageTracker&gt;::UpdateFillerStatsTracker (1,001,001 samples, 0.09%)</title><rect x="876.4" y="261" width="1.1" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="879.43" y="271.5" ></text>
+</g>
+<g >
+<title>alloc_anon_folio (2,002,002 samples, 0.19%)</title><rect x="976.9" y="229" width="2.2" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="979.94" y="239.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TListChunk&lt;NYql::NUdf::TUnboxedValue&gt;::~TListChunk (11,011,011 samples, 1.02%)</title><rect x="1027.2" y="373" width="12.0" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="1030.20" y="383.5" ></text>
+</g>
+<g >
+<title>std::__y1::__shared_weak_count::__release_weak (1,001,001 samples, 0.09%)</title><rect x="922.3" y="261" width="1.1" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="925.31" y="271.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (31,031,031 samples, 2.87%)</title><rect x="993.3" y="277" width="33.9" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="996.33" y="287.5" >__..</text>
+</g>
+<g >
+<title>zap_page_range_single (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="165" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="1153.67" y="175.5" ></text>
+</g>
+<g >
+<title>__memmove_avx512_unaligned_erms (6,006,006 samples, 0.56%)</title><rect x="910.3" y="357" width="6.6" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="913.30" y="367.5" ></text>
+</g>
+<g >
+<title>irq_exit_rcu (1,001,001 samples, 0.09%)</title><rect x="770.4" y="277" width="1.1" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="773.44" y="287.5" ></text>
+</g>
+<g >
+<title>flush_tlb_mm_range (5,005,005 samples, 0.46%)</title><rect x="1170.3" y="165" width="5.5" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="1173.33" y="175.5" ></text>
+</g>
+<g >
+<title>_ZNSt4__y111make_uniqueB8ne210000IN5arrow7compute12ScalarKernelEJNS_6vectorINS2_9InputTypeENS_9allocatorIS5_EEEENS2_10OutputTypeERPFNS1_6StatusEPNS2_13KernelContextERKNS2_9ExecBatchEPNS1_5DatumEEETnNS_9enable_ifIXntsr8is_arrayIT_EE5valueEiE4typeELi0EEENS_10unique_ptrISM_NS_14default_deleteISM_EEEEDpOT0_ (1,001,001 samples, 0.09%)</title><rect x="972.6" y="293" width="1.1" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="975.57" y="303.5" ></text>
+</g>
+<g >
+<title>unmap_vmas (5,005,005 samples, 0.46%)</title><rect x="1175.8" y="181" width="5.5" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="1178.80" y="191.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="13.3" y="373" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="16.28" y="383.5" ></text>
+</g>
+<g >
+<title>__mod_memcg_lruvec_state (1,001,001 samples, 0.09%)</title><rect x="1021.7" y="181" width="1.1" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="1024.74" y="191.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (11,011,011 samples, 1.02%)</title><rect x="1058.9" y="245" width="12.0" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="1061.89" y="255.5" ></text>
+</g>
+<g >
+<title>next_uptodate_folio (1,001,001 samples, 0.09%)</title><rect x="14.4" y="101" width="1.1" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="17.37" y="111.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="213" width="1.1" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1041.13" y="223.5" ></text>
+</g>
+<g >
+<title>finish_task_switch.isra.0 (1,001,001 samples, 0.09%)</title><rect x="492.9" y="181" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="495.93" y="191.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TYqlMemoryPool::Allocate (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="261" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1134.00" y="271.5" ></text>
+</g>
+<g >
+<title>__libc_start_call_main (1,054,054,053 samples, 97.50%)</title><rect x="15.5" y="421" width="1150.5" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="18.46" y="431.5" >__libc_start_call_main</text>
+</g>
+<g >
+<title>NYql::NUdf::TYqlMemoryPool::Allocate (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="261" width="2.2" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1137.28" y="271.5" ></text>
+</g>
+<g >
+<title>do_anonymous_page (1,001,001 samples, 0.09%)</title><rect x="983.5" y="229" width="1.1" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="986.50" y="239.5" ></text>
+</g>
+<g >
+<title>void std::__y1::vector&lt;arrow::compute::InputType, std::__y1::allocator&lt;arrow::compute::InputType&gt; &gt;::__init_with_size[abi:ne210000]&lt;arrow::compute::InputType const*, arrow::compute::InputType const*&gt; (1,001,001 samples, 0.09%)</title><rect x="973.7" y="293" width="1.1" height="15.0" fill="rgb(243,177,42)" rx="2" ry="2" />
+<text  x="976.67" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::ValidateDatum (17,017,017 samples, 1.57%)</title><rect x="924.5" y="325" width="18.6" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="927.50" y="335.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::(anonymous namespace)::InvokeHooksAndFreePages (1,001,001 samples, 0.09%)</title><rect x="876.4" y="309" width="1.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="879.43" y="319.5" ></text>
+</g>
+<g >
+<title>main (1,054,054,053 samples, 97.50%)</title><rect x="15.5" y="405" width="1150.5" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="18.46" y="415.5" >main</text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TMutableComputationNode&lt;NKikimr::NMiniKQL::(anonymous namespace)::TElementsWrapper&lt;false&gt; &gt;::GetValue (1,001,001 samples, 0.09%)</title><rect x="503.9" y="261" width="1.0" height="15.0" fill="rgb(247,193,46)" rx="2" ry="2" />
+<text  x="506.85" y="271.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="197" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1134.00" y="207.5" ></text>
+</g>
+<g >
+<title>_GLOBAL__sub_I_AliasAnalysisEvaluator.cpp (1,001,001 samples, 0.09%)</title><rect x="12.2" y="405" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="15.19" y="415.5" ></text>
+</g>
+<g >
+<title>mas_find (1,001,001 samples, 0.09%)</title><rect x="1182.4" y="229" width="1.0" height="15.0" fill="rgb(232,126,30)" rx="2" ry="2" />
+<text  x="1185.35" y="239.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::ToWideStream (1,001,001 samples, 0.09%)</title><rect x="969.3" y="357" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="972.30" y="367.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TFromWideFlowWrapper::TStreamValue::WideFetch (1,001,001 samples, 0.09%)</title><rect x="504.9" y="341" width="1.1" height="15.0" fill="rgb(220,70,16)" rx="2" ry="2" />
+<text  x="507.94" y="351.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="197" width="1.1" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="17.37" y="207.5" ></text>
+</g>
+<g >
+<title>folio_remove_rmap_ptes (3,003,003 samples, 0.28%)</title><rect x="1178.0" y="85" width="3.3" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="1180.98" y="95.5" ></text>
+</g>
+<g >
+<title>anon_vma_interval_tree_insert (1,001,001 samples, 0.09%)</title><rect x="1181.3" y="165" width="1.1" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="1184.26" y="175.5" ></text>
+</g>
+<g >
+<title>_GLOBAL__sub_I_mkql_block_variant.cpp (1,001,001 samples, 0.09%)</title><rect x="11.1" y="421" width="1.1" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="14.09" y="431.5" ></text>
+</g>
+<g >
+<title>__pthread_once_slow.isra.0 (1,001,001 samples, 0.09%)</title><rect x="10.0" y="405" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="13.00" y="415.5" ></text>
+</g>
+<g >
+<title>auto NKikimr::NMiniKQL::(anonymous namespace)::TBlockHashJoinWrapper&lt;NKikimr::NMiniKQL::TPhysicalJoin{ (26,026,026 samples, 2.41%)</title><rect x="916.9" y="357" width="28.4" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="919.85" y="367.5" >au..</text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::central_freelist_internal::CentralFreeList&lt;tcmalloc::tcmalloc_internal::central_freelist_internal::StaticForwarder&gt;::Populate (1,001,001 samples, 0.09%)</title><rect x="13.3" y="325" width="1.1" height="15.0" fill="rgb(250,207,49)" rx="2" ry="2" />
+<text  x="16.28" y="335.5" ></text>
+</g>
+<g >
+<title>mod_objcg_state (1,001,001 samples, 0.09%)</title><rect x="1186.7" y="133" width="1.1" height="15.0" fill="rgb(208,16,3)" rx="2" ry="2" />
+<text  x="1189.72" y="143.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::ArrayData (4,004,004 samples, 0.37%)</title><rect x="927.8" y="245" width="4.3" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="930.78" y="255.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_reschedule_ipi (2,002,002 samples, 0.19%)</title><rect x="491.8" y="277" width="2.2" height="15.0" fill="rgb(249,205,49)" rx="2" ry="2" />
+<text  x="494.83" y="287.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::Sampler::Init (1,001,001 samples, 0.09%)</title><rect x="14.4" y="341" width="1.1" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="17.37" y="351.5" ></text>
+</g>
+<g >
+<title>__memcg_slab_free_hook (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="213" width="1.0" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="1140.56" y="223.5" ></text>
+</g>
+<g >
+<title>__x64_sys_munmap (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="277" width="15.3" height="15.0" fill="rgb(206,7,1)" rx="2" ry="2" />
+<text  x="1171.15" y="287.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TProbeSpiller&lt;NKikimr::NMiniKQL::TSpillerSettings{64, 65536, 8}&gt;::GetState (9,009,009 samples, 0.83%)</title><rect x="877.5" y="341" width="9.9" height="15.0" fill="rgb(254,227,54)" rx="2" ry="2" />
+<text  x="880.52" y="351.5" ></text>
+</g>
+<g >
+<title>schedule (2,002,002 samples, 0.19%)</title><rect x="254.7" y="245" width="2.2" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="257.74" y="255.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (4,004,004 samples, 0.37%)</title><rect x="974.8" y="341" width="4.3" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="977.76" y="351.5" ></text>
+</g>
+<g >
+<title>asm_common_interrupt (1,001,001 samples, 0.09%)</title><rect x="770.4" y="309" width="1.1" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="773.44" y="319.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArgsDechunker::Next (7,007,007 samples, 0.65%)</title><rect x="926.7" y="293" width="7.6" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="929.69" y="303.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::SystemAllocator&lt;tcmalloc::tcmalloc_internal::NumaTopology&lt;1ul, 89ul&gt; &gt;::Release (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="293" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="1153.67" y="303.5" ></text>
+</g>
+<g >
+<title>v1_ERR_load_BUF_strings (1,001,001 samples, 0.09%)</title><rect x="10.0" y="357" width="1.1" height="15.0" fill="rgb(234,133,32)" rx="2" ry="2" />
+<text  x="13.00" y="367.5" ></text>
+</g>
+<g >
+<title>google::protobuf::internal::OnShutdownRun (2,002,002 samples, 0.19%)</title><rect x="13.3" y="389" width="2.2" height="15.0" fill="rgb(224,91,21)" rx="2" ry="2" />
+<text  x="16.28" y="399.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::(anonymous namespace)::InvokeHooksAndFreePages (1,001,001 samples, 0.09%)</title><rect x="968.2" y="325" width="1.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="971.20" y="335.5" ></text>
+</g>
+<g >
+<title>asm_sysvec_apic_timer_interrupt (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="357" width="1.0" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1140.56" y="367.5" ></text>
+</g>
+<g >
+<title>__alloc_pages_noprof (5,005,005 samples, 0.46%)</title><rect x="1013.0" y="165" width="5.5" height="15.0" fill="rgb(205,4,1)" rx="2" ry="2" />
+<text  x="1016.00" y="175.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="983.5" y="293" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="986.50" y="303.5" ></text>
+</g>
+<g >
+<title>x64_sys_call (14,014,014 samples, 1.30%)</title><rect x="1168.1" y="293" width="15.3" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1171.15" y="303.5" ></text>
+</g>
+<g >
+<title>up_write (1,001,001 samples, 0.09%)</title><rect x="1187.8" y="165" width="1.1" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="1190.81" y="175.5" ></text>
+</g>
+<g >
+<title>asm_common_interrupt (1,001,001 samples, 0.09%)</title><rect x="263.5" y="309" width="1.1" height="15.0" fill="rgb(227,105,25)" rx="2" ry="2" />
+<text  x="266.48" y="319.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="293" width="2.2" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1131.81" y="303.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::TNeumannHashTable&lt;false, false&gt;::GetRowMatch (63,063,063 samples, 5.83%)</title><rect x="772.6" y="325" width="68.9" height="15.0" fill="rgb(211,30,7)" rx="2" ry="2" />
+<text  x="775.63" y="335.5" >NKikimr..</text>
+</g>
+<g >
+<title>do_vmi_munmap (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="245" width="6.6" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="1186.44" y="255.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (1,001,001 samples, 0.09%)</title><rect x="1132.1" y="149" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1135.09" y="159.5" ></text>
+</g>
+<g >
+<title>void NKikimr::NMiniKQL::NDecimal::NPrivate::RegisterCompareScaleFactors&lt; (1,001,001 samples, 0.09%)</title><rect x="971.5" y="309" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="974.48" y="319.5" ></text>
+</g>
+<g >
+<title>__alloc_pages_noprof (5,005,005 samples, 0.46%)</title><rect x="1064.4" y="165" width="5.4" height="15.0" fill="rgb(205,4,1)" rx="2" ry="2" />
+<text  x="1067.35" y="175.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt;::pointer_type tcmalloc::tcmalloc_internal::alloc_small_sampled_hooks_or_perthread&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::CppOomPolicy, tcmalloc::tcmalloc_internal::DefaultAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="263.5" y="325" width="1.1" height="15.0" fill="rgb(245,187,44)" rx="2" ry="2" />
+<text  x="266.48" y="335.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TPackResult::AllocatedBytes (6,006,006 samples, 0.56%)</title><rect x="841.5" y="325" width="6.5" height="15.0" fill="rgb(228,106,25)" rx="2" ry="2" />
+<text  x="844.46" y="335.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::HugeCache::DoGet (1,001,001 samples, 0.09%)</title><rect x="1048.0" y="229" width="1.1" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="1050.96" y="239.5" ></text>
+</g>
+<g >
+<title>do_vmi_align_munmap (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="229" width="6.6" height="15.0" fill="rgb(211,29,7)" rx="2" ry="2" />
+<text  x="1186.44" y="239.5" ></text>
+</g>
+<g >
+<title>do_vmi_align_munmap (13,013,013 samples, 1.20%)</title><rect x="1168.1" y="229" width="14.3" height="15.0" fill="rgb(211,29,7)" rx="2" ry="2" />
+<text  x="1171.15" y="239.5" ></text>
+</g>
+<g >
+<title>common_interrupt (1,001,001 samples, 0.09%)</title><rect x="848.0" y="309" width="1.1" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="851.02" y="319.5" ></text>
+</g>
+<g >
+<title>sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="1088.4" y="325" width="1.1" height="15.0" fill="rgb(236,146,35)" rx="2" ry="2" />
+<text  x="1091.39" y="335.5" ></text>
+</g>
+<g >
+<title>std::__y1::vector&lt;unsigned long, NKikimr::NMiniKQL::TMKQLAllocator&lt;unsigned long,  (1,001,001 samples, 0.09%)</title><rect x="69.0" y="309" width="1.1" height="15.0" fill="rgb(235,141,33)" rx="2" ry="2" />
+<text  x="72.00" y="319.5" ></text>
+</g>
+<g >
+<title>jp_n1t (1,081,081,080 samples, 100.00%)</title><rect x="10.0" y="437" width="1180.0" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="13.00" y="447.5" >jp_n1t</text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::GuardedPageAllocator::Allocate (1,001,001 samples, 0.09%)</title><rect x="502.8" y="213" width="1.1" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="505.76" y="223.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="165" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="17.37" y="175.5" ></text>
+</g>
+<g >
+<title>std::__y1::pair&lt;llvm::StringMapIterator&lt;llvm::cl::Option*&gt;, bool&gt; llvm::StringMap&lt;llvm::cl::Option*, llvm::MallocAllocator&gt;::try_emplace&lt;llvm::cl::Option*&gt; (1,001,001 samples, 0.09%)</title><rect x="12.2" y="357" width="1.1" height="15.0" fill="rgb(232,126,30)" rx="2" ry="2" />
+<text  x="15.19" y="367.5" ></text>
+</g>
+<g >
+<title>do_madvise.part.0 (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="181" width="1.1" height="15.0" fill="rgb(233,133,31)" rx="2" ry="2" />
+<text  x="1041.13" y="191.5" ></text>
+</g>
+<g >
+<title>unmap_single_vma (1,001,001 samples, 0.09%)</title><rect x="968.2" y="117" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="971.20" y="127.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TDataLiteral::Create (1,001,001 samples, 0.09%)</title><rect x="969.3" y="293" width="1.1" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="972.30" y="303.5" ></text>
+</g>
+<g >
+<title>CityHash64 (1,001,001 samples, 0.09%)</title><rect x="971.5" y="181" width="1.1" height="15.0" fill="rgb(230,116,27)" rx="2" ry="2" />
+<text  x="974.48" y="191.5" ></text>
+</g>
+<g >
+<title>arrow::CPUMemoryManager::~CPUMemoryManager (1,001,001 samples, 0.09%)</title><rect x="922.3" y="277" width="1.1" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="925.31" y="287.5" ></text>
+</g>
+<g >
+<title>irqentry_exit_to_user_mode (1,001,001 samples, 0.09%)</title><rect x="892.8" y="293" width="1.1" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="895.81" y="303.5" ></text>
+</g>
+<g >
+<title>handle_mm_fault (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="277" width="3.2" height="15.0" fill="rgb(234,135,32)" rx="2" ry="2" />
+<text  x="1124.17" y="287.5" ></text>
+</g>
+<g >
+<title>irqentry_exit (3,003,003 samples, 0.28%)</title><rect x="253.6" y="277" width="3.3" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="256.65" y="287.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TListChunk&lt;NYql::NUdf::TUnboxedValue&gt;::~TListChunk (20,020,020 samples, 1.85%)</title><rect x="947.4" y="357" width="21.9" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="950.44" y="367.5" >N..</text>
+</g>
+<g >
+<title>finish_task_switch.isra.0 (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="245" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="1120.89" y="255.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::NPackedTuple::TTupleLayout::ColumnSizes (1,001,001 samples, 0.09%)</title><rect x="69.0" y="325" width="1.1" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="72.00" y="335.5" ></text>
+</g>
+<g >
+<title>__pte_offset_map_lock (1,001,001 samples, 0.09%)</title><rect x="1121.2" y="213" width="1.1" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="1124.17" y="223.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::THolderFactory::CreateDirectArrayHolder (48,048,048 samples, 4.44%)</title><rect x="974.8" y="373" width="52.4" height="15.0" fill="rgb(250,209,49)" rx="2" ry="2" />
+<text  x="977.76" y="383.5" >NKiki..</text>
+</g>
+<g >
+<title>std::__y1::pair&lt;NYql::NUdf::TUnboxedValue const*, NYql::NUdf::TUnboxedValue*&gt; std::__y1::__copy_impl::operator (17,017,017 samples, 1.57%)</title><rect x="1070.9" y="357" width="18.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1073.91" y="367.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::GuardedPageAllocator::ReserveFreeSlot (1,001,001 samples, 0.09%)</title><rect x="502.8" y="197" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="505.76" y="207.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="11.1" y="389" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="14.09" y="399.5" ></text>
+</g>
+<g >
+<title>alloc_anon_folio (10,010,010 samples, 0.93%)</title><rect x="1007.5" y="229" width="11.0" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1010.54" y="239.5" ></text>
+</g>
+<g >
+<title>zap_present_ptes (1,001,001 samples, 0.09%)</title><rect x="968.2" y="53" width="1.1" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="971.20" y="63.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="309" width="2.2" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1127.44" y="319.5" ></text>
+</g>
+<g >
+<title>free_pages_and_swap_cache (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="117" width="1.1" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="1153.67" y="127.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TResizeableBuffer::Reserve (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="277" width="1.1" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="1134.00" y="287.5" ></text>
+</g>
+<g >
+<title>arrow::ArrayData::Slice (1,001,001 samples, 0.09%)</title><rect x="264.6" y="341" width="1.1" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="267.57" y="351.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;unsigned short, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;unsigned short, false&gt; &gt;::DoReserve (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="325" width="2.2" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="1137.28" y="335.5" ></text>
+</g>
+<g >
+<title>_raw_spin_unlock (1,001,001 samples, 0.09%)</title><rect x="1013.0" y="133" width="1.1" height="15.0" fill="rgb(223,85,20)" rx="2" ry="2" />
+<text  x="1016.00" y="143.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TTypedBufferBuilder&lt;double&gt;::Reserve (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="309" width="1.1" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="1134.00" y="319.5" ></text>
+</g>
+<g >
+<title>__schedule (1,001,001 samples, 0.09%)</title><rect x="1117.9" y="261" width="1.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="1120.89" y="271.5" ></text>
+</g>
+<g >
+<title>mas_wr_store_entry (1,001,001 samples, 0.09%)</title><rect x="1188.9" y="181" width="1.1" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="1191.91" y="191.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TFixedSizeArrayBuilderBase&lt;double, false, NYql::NUdf::TFixedSizeArrayBuilder&lt;double, false&gt; &gt;::DoReserve (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="325" width="1.1" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="1134.00" y="335.5" ></text>
+</g>
+<g >
+<title>vma_alloc_folio_noprof (2,002,002 samples, 0.19%)</title><rect x="1128.8" y="197" width="2.2" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1131.81" y="207.5" ></text>
+</g>
+<g >
+<title>__handle_mm_fault (4,004,004 samples, 0.37%)</title><rect x="974.8" y="277" width="4.3" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="977.76" y="287.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="1131.0" y="213" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1134.00" y="223.5" ></text>
+</g>
+<g >
+<title>__list_del_entry_valid_or_report (2,002,002 samples, 0.19%)</title><rect x="976.9" y="101" width="2.2" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="979.94" y="111.5" ></text>
+</g>
+<g >
+<title>finish_task_switch.isra.0 (1,001,001 samples, 0.09%)</title><rect x="263.5" y="213" width="1.1" height="15.0" fill="rgb(246,189,45)" rx="2" ry="2" />
+<text  x="266.48" y="223.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TResizeableBuffer::~TResizeableBuffer (2,002,002 samples, 0.19%)</title><rect x="921.2" y="293" width="2.2" height="15.0" fill="rgb(216,54,13)" rx="2" ry="2" />
+<text  x="924.22" y="303.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (6,006,006 samples, 0.56%)</title><rect x="1183.4" y="325" width="6.6" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1186.44" y="335.5" ></text>
+</g>
+<g >
+<title>arrow::Datum* std::__y1::vector&lt;arrow::Datum, std::__y1::allocator&lt;arrow::Datum&gt; &gt;::__emplace_back_slow_path&lt;arrow::Datum const&amp;&gt; (1,001,001 samples, 0.09%)</title><rect x="265.7" y="341" width="1.1" height="15.0" fill="rgb(230,118,28)" rx="2" ry="2" />
+<text  x="268.67" y="351.5" ></text>
+</g>
+<g >
+<title>alloc_pages_noprof (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="37" width="1.1" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1187.54" y="47.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::SystemAllocator&lt;tcmalloc::tcmalloc_internal::NumaTopology&lt;1ul, 89ul&gt; &gt;::Release (1,001,001 samples, 0.09%)</title><rect x="1038.1" y="277" width="1.1" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="1041.13" y="287.5" ></text>
+</g>
+<g >
+<title>exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="14.4" y="229" width="1.1" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="17.37" y="239.5" ></text>
+</g>
+<g >
+<title>sysvec_apic_timer_interrupt (1,001,001 samples, 0.09%)</title><rect x="1137.6" y="341" width="1.0" height="15.0" fill="rgb(220,69,16)" rx="2" ry="2" />
+<text  x="1140.56" y="351.5" ></text>
+</g>
+<g >
+<title>NYql::NUdf::TArrayBuilderBase::Build (5,005,005 samples, 0.46%)</title><rect x="1131.0" y="357" width="5.5" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="1134.00" y="367.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TBinaryNumericKernelFamily&lt;NKikimr::NMiniKQL::(anonymous namespace)::TIntegralMod, NKikimr::NMiniKQL::(anonymous namespace)::TMod&gt;::~TBinaryNumericKernelFamily (1,001,001 samples, 0.09%)</title><rect x="1089.5" y="341" width="1.1" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1092.48" y="351.5" ></text>
+</g>
+<g >
+<title>sysvec_reschedule_ipi (1,001,001 samples, 0.09%)</title><rect x="268.9" y="325" width="1.1" height="15.0" fill="rgb(236,146,35)" rx="2" ry="2" />
+<text  x="271.94" y="335.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (1,001,001 samples, 0.09%)</title><rect x="969.3" y="277" width="1.1" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="972.30" y="287.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (39,039,039 samples, 3.61%)</title><rect x="984.6" y="341" width="42.6" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="987.59" y="351.5" >asm_..</text>
+</g>
+<g >
+<title>__handle_mm_fault (3,003,003 samples, 0.28%)</title><rect x="1121.2" y="261" width="3.2" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1124.17" y="271.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::(anonymous namespace)::TRenamesPackedTupleOutput&lt;NKikimr::NMiniKQL::TPhysicalJoin{ (3,003,003 samples, 0.28%)</title><rect x="506.0" y="341" width="3.3" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="509.04" y="351.5" ></text>
+</g>
+<g >
+<title>__tlb_batch_free_encoded_pages (1,001,001 samples, 0.09%)</title><rect x="1150.7" y="133" width="1.1" height="15.0" fill="rgb(205,3,0)" rx="2" ry="2" />
+<text  x="1153.67" y="143.5" ></text>
+</g>
+<g >
+<title>std::__y1::unique_ptr&lt;arrow::ResizableBuffer, std::__y1::default_delete&lt;arrow::ResizableBuffer&gt; &gt; NYql::NUdf::AllocateResizableBuffer&lt;NYql::NUdf::TResizeableBuffer&gt; (2,002,002 samples, 0.19%)</title><rect x="1134.3" y="293" width="2.2" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="1137.28" y="303.5" ></text>
+</g>
+<g >
+<title>handle_pte_fault (1,001,001 samples, 0.09%)</title><rect x="983.5" y="245" width="1.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="986.50" y="255.5" ></text>
+</g>
+<g >
+<title>__memset_avx512_unaligned (1,001,001 samples, 0.09%)</title><rect x="1133.2" y="277" width="1.1" height="15.0" fill="rgb(214,41,9)" rx="2" ry="2" />
+<text  x="1136.19" y="287.5" ></text>
+</g>
+<g >
+<title>unmap_page_range (1,001,001 samples, 0.09%)</title><rect x="1184.5" y="149" width="1.1" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1187.54" y="159.5" ></text>
+</g>
+<g >
+<title>tcmalloc::tcmalloc_internal::ThreadCache::ReleaseToTransferCache (1,001,001 samples, 0.09%)</title><rect x="967.1" y="245" width="1.1" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="970.11" y="255.5" ></text>
+</g>
+<g >
+<title>asm_exc_page_fault (2,002,002 samples, 0.19%)</title><rect x="1124.4" y="325" width="2.2" height="15.0" fill="rgb(225,93,22)" rx="2" ry="2" />
+<text  x="1127.44" y="335.5" ></text>
+</g>
+<g >
+<title>alloc_anon_folio (8,008,008 samples, 0.74%)</title><rect x="1061.1" y="229" width="8.7" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="1064.07" y="239.5" ></text>
+</g>
+<g >
+<title>do_user_addr_fault (1,001,001 samples, 0.09%)</title><rect x="1140.8" y="341" width="1.1" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="1143.83" y="351.5" ></text>
+</g>
+<g >
+<title>THashTable&lt;std::__y1::pair&lt;unsigned int const, arrow::Datum&gt;, unsigned int, THash&lt;unsigned int&gt;, TSelect1st, TEqualTo&lt;unsigned int&gt;, std::__y1::allocator&lt;unsigned int&gt; &gt;::reserve (1,001,001 samples, 0.09%)</title><rect x="263.5" y="341" width="1.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="266.48" y="351.5" ></text>
+</g>
+<g >
+<title>rmqueue.constprop.0 (2,002,002 samples, 0.19%)</title><rect x="1067.6" y="133" width="2.2" height="15.0" fill="rgb(212,33,7)" rx="2" ry="2" />
+<text  x="1070.63" y="143.5" ></text>
+</g>
+<g >
+<title>NKikimr::NMiniKQL::TArrowBlock::~TArrowBlock (1,001,001 samples, 0.09%)</title><rect x="967.1" y="325" width="1.1" height="15.0" fill="rgb(221,77,18)" rx="2" ry="2" />
+<text  x="970.11" y="335.5" ></text>
+</g>
+<g >
+<title>__sized_ptr_t tcmalloc::tcmalloc_internal::SampleifyAllocation&lt;tcmalloc::tcmalloc_internal::TCMallocPolicy&lt;tcmalloc::tcmalloc_internal::MallocOomPolicy, tcmalloc::tcmalloc_internal::MallocAlignPolicy, tcmalloc::tcmalloc_internal::AllocationAccessHotPolicy, tcmalloc::tcmalloc_internal::InvokeHooksPolicy, tcmalloc::tcmalloc_internal::NonSizeReturningPolicy, tcmalloc::tcmalloc_internal::LocalNumaPartitionPolicy&gt; &gt; (1,001,001 samples, 0.09%)</title><rect x="502.8" y="245" width="1.1" height="15.0" fill="rgb(211,31,7)" rx="2" ry="2" />
+<text  x="505.76" y="255.5" ></text>
+</g>
+</g>
+</svg>
