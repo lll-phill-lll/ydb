@@ -3,7 +3,6 @@ unittest_executable("ut") {
     "//library/cpp/testing/unittest",
     "//ydb/core/security/certificate_check",
     "//ydb/core/security/certificate_check/test_utils",
-    "//ydb/core/testlib/default",  # peerdir only
   ]
 
   sources = [
@@ -16,14 +15,14 @@ unittest_executable("ut") {
   include_dirs = [ "//ydb/core/security/certificate_check" ]
 
   link_select = [
-    "YqlServicePolicy=exception_policy",
+    "YqlServicePolicy=stub",
     "allocator=tcmalloc",
-    "minikql_codegen=llvm16",
+    "minikql_codegen=no_llvm",
     "retro_spans=spans",
     "topic_rpc=persqueue_v1",
-    "wasm=engine",
+    "wasm=wasm_default",
     "yql_pg_runtime=pg_dummy",
     "yql_pg_sql_translator=pg_dummy",
-    "yt_codegen=llvm16",
+    "yt_codegen=no_llvm",
   ]
 }
