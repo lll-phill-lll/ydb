@@ -10,6 +10,7 @@ library("actors") {
     "//ydb/library/yql/providers/dq/api/protos",
     "//ydb/library/yql/providers/dq/common",
     "//ydb/library/yql/providers/dq/counters",
+    # "//ydb/library/yql/providers/dq/interface",
     # "//ydb/library/yql/providers/dq/task_runner",
     # "//ydb/library/yql/providers/dq/task_runner_actor",
     # "//ydb/library/yql/providers/dq/worker_manager",
@@ -37,7 +38,6 @@ library("actors") {
     # "//ydb/library/yql/dq/tasks",  # peerdir only
     "//ydb/library/yql/providers/dq/actors/events",  # peerdir only
     # "//ydb/library/yql/providers/dq/api/grpc",  # peerdir only
-    # "//ydb/library/yql/providers/dq/interface",
     "//ydb/library/yql/providers/dq/planner",
     "//ydb/library/yql/providers/dq/runtime",
     "//ydb/library/yql/providers/dq/worker_manager/interface",
