@@ -9,6 +9,7 @@ library("ydb_proxy") {
   deps = [
     "//ydb/core/protos",
     "//ydb/library/actors/core",
+    "//ydb/public/api/protos",
     # "//ydb/public/sdk/cpp/src/client/driver",
     "//ydb/public/sdk/cpp/src/client/iam",
     "//ydb/public/sdk/cpp/src/client/iam_private",

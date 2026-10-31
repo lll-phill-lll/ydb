@@ -3,6 +3,7 @@ library("ut_helpers") {
 
   public_deps = [
     # "//library/cpp/testing/unittest",
+    # "//library/cpp/threading/future",
     "//ydb/core/base",
     # "//ydb/core/grpc_services/base",
     # "//ydb/core/grpc_services/local_rpc",
