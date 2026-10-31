@@ -2,6 +2,8 @@
 
 skipped (non-trivial):
   library/cpp/digest/argonish/internal/proxies/avx2 SRC_C_AVX2
+  ydb/apps/bridge_skipper/ydbd_mock PY3_PROGRAM,PY_MAIN,PY_SRCS
+  ydb/apps/bridge_skipper/ydbd_mock/lib PY3_LIBRARY,PY_SRCS
   ydb/apps/dstool PY3_PROGRAM,PY_MAIN,PY_SRCS,STRIP
   ydb/apps/dstool/lib PY3_LIBRARY,PY_SRCS
   ydb/core/erasure/ut SET
