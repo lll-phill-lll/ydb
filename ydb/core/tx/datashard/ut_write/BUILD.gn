@@ -7,6 +7,7 @@ unittest_executable("ut_write") {
     "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/kqp/ut/common",  # peerdir only
     "//ydb/core/protos",
+    "//ydb/core/tablet_flat",
     "//ydb/core/testlib",
     "//ydb/core/testlib/actors",
     "//ydb/core/testlib/default",  # peerdir only
