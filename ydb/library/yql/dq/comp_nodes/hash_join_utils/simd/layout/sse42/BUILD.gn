@@ -1,14 +1,7 @@
-config("sse42_private_config") {
-  cflags = [ "-msse4.2" ]
-}
+# yamake2gn: keep  -- hand-written, do not regenerate
 
-library("sse42") {
-  deps = [
-    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils",
-    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils/simd",  # peerdir only
-  ]
+source_set("sse42") {
+  deps += [ "//yql/essentials/minikql" ]
 
-  sources = [ "packing_sse42.cpp" ]
-
-  configs = [ ":sse42_private_config" ]
+  sources = [ "tuple_sse42.cpp" ]
 }

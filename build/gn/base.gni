@@ -7,7 +7,13 @@ template("avx_source_set") {
 
 template("avx2_source_set") {
     source_set(target_name) {
-        forward_variables_from(invoker, "*")
+        forward_variables_from(invoker, [ "include_dirs", "public_configs", "sources" ])
+        if (defined(invoker.deps)) {
+            deps += invoker.deps
+        }
+        if (defined(invoker.configs)) {
+            configs += invoker.configs
+        }
         configs += [ "//build/gn/config:_avx2_config" ]
     }
 }

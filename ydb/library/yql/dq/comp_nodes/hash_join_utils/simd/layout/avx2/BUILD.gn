@@ -1,14 +1,7 @@
-config("avx2_private_config") {
-  cflags = [ "-mavx2" ]
-}
+# yamake2gn: keep  -- hand-written, do not regenerate
 
-library("avx2") {
-  deps = [
-    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils",
-    # "//ydb/library/yql/dq/comp_nodes/hash_join_utils/simd",  # peerdir only
-  ]
+avx2_source_set("avx2") {
+  deps = [ "//yql/essentials/minikql" ]
 
-  sources = [ "packing_avx2.cpp" ]
-
-  configs = [ ":avx2_private_config" ]
+  sources = [ "tuple_avx2.cpp" ]
 }
