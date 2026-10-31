@@ -32,6 +32,7 @@ unittest_executable("query") {
     "//ydb/public/sdk/cpp/src/client/resources",
     "//ydb/public/sdk/cpp/src/client/table",
     "//ydb/public/sdk/cpp/src/client/value",
+    "//ydb/public/sdk/cpp/src/library/operation_id",
     "//yql/essentials/ast",
     "//yql/essentials/core",
     "//yql/essentials/public/udf",
