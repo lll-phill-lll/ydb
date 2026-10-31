@@ -7,6 +7,7 @@ unittest_executable("ut") {
     "//library/cpp/svnversion",
     "//library/cpp/testing/unittest",
     "//ydb/core/base",
+    "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/crypto",
     "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/blobstorage/pdisk",
