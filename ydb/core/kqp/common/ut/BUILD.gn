@@ -1,9 +1,11 @@
 unittest_executable("ut") {
   deps = [
     "//library/cpp/testing/unittest",
-    "//ydb/core/kqp",  # peerdir only
     "//ydb/core/kqp/common",
+    "//ydb/core/kqp/topics",  # peerdir only
     "//ydb/core/kqp/ut/common",  # peerdir only
+    "//ydb/core/scheme",
+    "//ydb/core/scheme_types",
     "//yql/essentials/minikql",
     "//yql/essentials/minikql/invoke_builtins",
     "//yql/essentials/minikql/invoke_builtins/llvm16",  # peerdir only
@@ -15,12 +17,12 @@ unittest_executable("ut") {
 
   sources = [
     "dynamic_function_registry_ut.cpp",
+    "kqp_shard_meta_ut.cpp",
     "kqp_tli_ut.cpp",
+    "kqp_tx_manager_ut.cpp",
   ]
 
-  include_dirs = [
-    "//ydb/core/kqp",  # peerdir only
-  ]
+  include_dirs = [ "//ydb/core/kqp/common" ]
 
   link_select = [
     "YqlServicePolicy=exception_policy",

@@ -72,6 +72,7 @@ library("common") {
     "kqp_resolve.cpp",
     "kqp_row_builder.cpp",
     "kqp_ru_calc.cpp",
+    "kqp_shard_meta.cpp",
     "kqp_timeouts.cpp",
     "kqp_tx.cpp",
     "kqp_tx_manager.cpp",
