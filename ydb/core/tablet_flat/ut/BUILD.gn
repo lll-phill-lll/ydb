@@ -44,6 +44,7 @@ unittest_executable("ut") {
     "//ydb/library/yverify_stream",
     "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
     "//yql/essentials/types/binary_json",
+    "//yql/essentials/types/dynumber",
   ]
 
   sources = [
@@ -96,6 +97,7 @@ unittest_executable("ut") {
     "ut_slice.cpp",
     "ut_slice_loader.cpp",
     "ut_stat.cpp",
+    "ut_tier_predicate.cpp",
     "ut_vacuum.cpp",
     "ut_versions.cpp",
   ]

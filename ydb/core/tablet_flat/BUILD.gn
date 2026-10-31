@@ -107,6 +107,7 @@ library("tablet_flat") {
     "flat_table_misc.cpp",
     "flat_table_observer.cpp",
     "flat_table_part.cpp",
+    "flat_tier_predicate.cpp",
     "probes.cpp",
     "shared_cache_btree_walk.cpp",
     "shared_cache_counters.cpp",

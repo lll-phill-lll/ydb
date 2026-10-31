@@ -7,11 +7,15 @@ unittest_executable("ut_pg") {
     "//ydb/core/tablet_flat/test/libs/rows",
     "//ydb/core/tablet_flat/test/libs/table",
     "//yql/essentials/parser/pg_wrapper",
+    "//yql/essentials/parser/pg_wrapper/interface/type_desc",
     "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
     "//yql/essentials/sql/pg",  # peerdir only
   ]
 
-  sources = [ "flat_database_pg_ut.cpp" ]
+  sources = [
+    "flat_database_pg_ut.cpp",
+    "ut_tier_predicate_pg.cpp",
+  ]
 
   include_dirs = [ "//ydb/core/tablet_flat" ]
 
