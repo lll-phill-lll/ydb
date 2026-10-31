@@ -12,6 +12,7 @@ library("lib") {
     "//ydb/core/blobstorage/lwtrace_probes",
     "//ydb/core/blobstorage/pdisk",
     # "//ydb/core/blobstorage/vdisk/common",
+    "//ydb/core/load_test/blobstorage",  # peerdir only
     # "//ydb/core/load_test/common",
     # "//ydb/core/node_whiteboard",
     "//ydb/core/protos",
@@ -29,7 +30,6 @@ library("lib") {
   deps = [
     # ":ydb_stress_tool",
     # "//contrib/libs/protobuf",  # peerdir only
-    # "//ydb/core/load_test/blobstorage",  # peerdir only
   ]
 
   sources = [

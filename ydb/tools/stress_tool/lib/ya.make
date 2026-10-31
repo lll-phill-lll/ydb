@@ -8,7 +8,7 @@ PEERDIR(
     library/cpp/getopt
     library/cpp/monlib/dynamic_counters/percentile
     ydb/core/blobstorage/lwtrace_probes
-    ydb/core/load_test/blobstorage
+    ydb/core/load_test/blobstorage # gn: public dep
     ydb/core/protos
     ydb/tools/stress_tool/proto
     ydb/library/actors/core

@@ -1,0 +1,30 @@
+unittest_executable("ut_sector_map") {
+  deps = [
+    "//contrib/libs/protobuf",
+    "//library/cpp/testing/unittest",
+    "//ydb/core/blobstorage/pdisk",  # peerdir only
+    "//ydb/core/driver_lib/version",  # peerdir only
+    "//ydb/library/pdisk_io",  # peerdir only
+    "//ydb/tools/stress_tool:lib",
+    "//ydb/tools/stress_tool:ydb_stress_tool",
+  ]
+
+  sources = [
+    "//ydb/tools/stress_tool/ut/device_test_tool_cli_ut.cpp",
+    "device_test_tool_sector_map_ut.cpp",
+  ]
+
+  include_dirs = [ "//ydb/tools/stress_tool/lib" ]
+
+  link_select = [
+    "YqlServicePolicy=stub",
+    "allocator=tcmalloc",
+    "minikql_codegen=no_llvm",
+    "retro_spans=spans",
+    "topic_rpc=persqueue_v1",
+    "wasm=wasm_default",
+    "yql_pg_runtime=pg_dummy",
+    "yql_pg_sql_translator=pg_dummy",
+    "yt_codegen=no_llvm",
+  ]
+}

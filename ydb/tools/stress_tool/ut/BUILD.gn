@@ -21,10 +21,7 @@ unittest_executable("ut") {
     "//yt/yql/providers/yt/comp_nodes/llvm16",  # peerdir only
   ]
 
-  sources = [
-    "//ydb/tools/stress_tool/device_test_tool_ut.cpp",
-    "device_test_tool_cli_ut.cpp",
-  ]
+  sources = [ "//ydb/tools/stress_tool/device_test_tool_ut.cpp" ]
 
   include_dirs = [ "//ydb/tools/stress_tool/lib" ]
 

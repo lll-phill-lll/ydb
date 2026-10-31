@@ -877,6 +877,7 @@ group("tests") {
         "//ydb/tests/tools/kqprun",
         "//ydb/tools/pdisktool/ut",
         "//ydb/tools/stress_tool/ut",
+        "//ydb/tools/stress_tool/ut_sector_map",
         "//ydb/tools/ydb_bench/memory/ut",
         "//ydb/udfs/wasm/log_parsing/ut",
         "//ydb/udfs/wasm/trie/ut",
