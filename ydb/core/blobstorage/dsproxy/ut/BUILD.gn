@@ -27,6 +27,7 @@ unittest_executable("ut") {
     "dsproxy_patch_ut.cpp",
     "dsproxy_put_ut.cpp",
     "dsproxy_quorum_tracker_ut.cpp",
+    "dsproxy_range_ut.cpp",
     "dsproxy_request_reporting_ut.cpp",
     "dsproxy_sequence_ut.cpp",
     "dsproxy_vdisk_mock_ut.cpp",
