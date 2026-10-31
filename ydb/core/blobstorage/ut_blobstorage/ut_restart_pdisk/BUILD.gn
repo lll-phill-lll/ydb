@@ -2,7 +2,9 @@ unittest_executable("ut_restart_pdisk") {
   deps = [
     "//ydb/core/blobstorage/base",
     "//ydb/core/blobstorage/nodewarden",
+    "//ydb/core/blobstorage/pdisk",
     "//ydb/core/blobstorage/ut_blobstorage/lib",
+    "//ydb/library/pdisk_io",
   ]
 
   sources = [
