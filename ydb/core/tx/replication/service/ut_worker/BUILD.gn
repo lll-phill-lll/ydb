@@ -5,6 +5,7 @@ unittest_executable("ut_worker") {
     "//ydb/core/tx/replication/service",
     "//ydb/core/tx/replication/ut_helpers",
     "//ydb/core/tx/replication/ydb_proxy",
+    "//ydb/library/actors/core",
     "//ydb/public/sdk/cpp/src/client/topic",
   ]
 
