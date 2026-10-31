@@ -7,6 +7,7 @@ unittest_executable("ut") {
 
   sources = [
     "//ydb/library/actors/testlib/decorator_ut.cpp",
+    "//ydb/library/actors/testlib/fast_time_ut.cpp",
     "//ydb/library/actors/testlib/subsystem_ut.cpp",
   ]
 
