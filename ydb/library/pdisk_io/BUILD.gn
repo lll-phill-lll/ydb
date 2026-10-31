@@ -21,6 +21,7 @@ library("pdisk_io") {
   deps = [
     ":protos",
     "//contrib/libs/libaio",
+    "//contrib/libs/snappy",
     # "//ydb/core/util",
     "//ydb/library/actors/core",
   ]

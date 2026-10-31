@@ -4,10 +4,12 @@ unittest_executable("ut") {
     "//library/cpp/testing/unittest",
     "//ydb/library/actors/core",
     "//ydb/library/pdisk_io",
+    "//ydb/library/pdisk_io:protos",
   ]
 
   sources = [
     "aio_completion_ut.cpp",
+    "sector_map_ut.cpp",
     "uring_router_ut.cpp",
   ]
 
