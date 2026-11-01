@@ -6,7 +6,11 @@ unittest_executable("scan") {
     "//ydb/core/kqp/common",
     "//ydb/core/kqp/counters",
     "//ydb/core/kqp/executer_actor",
+    "//ydb/core/kqp/provider",
+    "//ydb/core/kqp/query_data",  # peerdir only
+    "//ydb/core/kqp/rm_service",
     "//ydb/core/kqp/runtime",
+    "//ydb/core/kqp/session_actor",
     "//ydb/core/kqp/ut/common",
     "//ydb/core/protos",
     "//ydb/core/protos/schemeshard",
@@ -17,6 +21,8 @@ unittest_executable("scan") {
     "//ydb/core/tx/tx_proxy:public",
     "//ydb/library/yql/dq/actors/compute",
     "//ydb/public/sdk/cpp/src/client/query",
+    "//yql/essentials/minikql",
+    "//yql/essentials/minikql/invoke_builtins",
     "//yql/essentials/sql/pg_dummy",  # peerdir only
   ]
 
@@ -24,6 +30,7 @@ unittest_executable("scan") {
     "kqp_flowcontrol_ut.cpp",
     "kqp_point_consolidation_ut.cpp",
     "kqp_scan_ut.cpp",
+    "kqp_snapshot_ranges_ut.cpp",
     "kqp_split_ut.cpp",
   ]
 

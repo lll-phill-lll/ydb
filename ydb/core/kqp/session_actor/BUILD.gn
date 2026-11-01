@@ -46,7 +46,7 @@ library("session_actor") {
     # "//ydb/core/tx/schemeshard",
     # "//ydb/core/tx/tx_proxy:public",
     # "//ydb/core/util",
-    # "//ydb/core/ydb_convert",
+    "//ydb/core/ydb_convert",
     # "//ydb/library/aclib",
     "//ydb/library/actors/async",
     "//ydb/library/persqueue/topic_parser",
@@ -64,6 +64,7 @@ library("session_actor") {
     "kqp_query_state.cpp",
     "kqp_query_stats.cpp",
     "kqp_session_actor.cpp",
+    "kqp_snapshot_tables.cpp",
     "kqp_temp_tables_manager.cpp",
     "kqp_worker_actor.cpp",
   ]
