@@ -81,6 +81,7 @@ unittest_executable("ut") {
     "ut_iterator.cpp",
     "ut_key_blocks.cpp",
     "ut_memtable.cpp",
+    "ut_memtable_memory.cpp",
     "ut_other.cpp",
     "ut_pages.cpp",
     "ut_part.cpp",

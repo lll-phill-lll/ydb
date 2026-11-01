@@ -2,11 +2,15 @@ unittest_executable("ut_util") {
   deps = [
     "//library/cpp/testing/unittest",
     "//ydb/core/tablet_flat",
+    "//yql/essentials/public/decimal",  # peerdir only
+    "//yql/essentials/public/udf/service/stub",  # peerdir only
+    "//yql/essentials/sql/pg_dummy",  # peerdir only
   ]
 
   sources = [
     "//ydb/core/tablet_flat/util_pool_ut.cpp",
     "//ydb/core/tablet_flat/util_string_ut.cpp",
+    "memtable_allocation_ut.cpp",
   ]
 
   include_dirs = [ "//ydb/core/tablet_flat" ]
