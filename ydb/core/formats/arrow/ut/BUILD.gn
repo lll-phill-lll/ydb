@@ -10,10 +10,11 @@ unittest_executable("ut") {
     "//ydb/core/formats/arrow/program/ascii_contains",
     "//ydb/library/actors/core",
     "//ydb/library/arrow_kernels",
-    "//ydb/library/formats/arrow",  # peerdir only
+    "//ydb/library/formats/arrow",
     "//ydb/library/formats/arrow/hash",
     "//ydb/library/formats/arrow/helpers",
     "//ydb/library/formats/arrow/simple_builder",
+    "//ydb/library/formats/arrow/switch",
     "//yql/essentials/parser/pg_wrapper",  # peerdir only
     "//yql/essentials/public/decimal",
     "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
@@ -22,6 +23,7 @@ unittest_executable("ut") {
   ]
 
   sources = [
+    "comparison_ut.cpp",
     "ut_arrow.cpp",
     "ut_buffer_over_string.cpp",
     "ut_column_filter.cpp",
