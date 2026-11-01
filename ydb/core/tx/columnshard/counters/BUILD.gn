@@ -1,6 +1,7 @@
 library("counters") {
   public_deps = [
     # "//library/cpp/json",
+    # "//library/cpp/lwtrace",
     # "//library/cpp/monlib/dynamic_counters",
     # "//library/cpp/time_provider",
     "//ydb/core/base",
@@ -24,6 +25,7 @@ library("counters") {
 
   deps = [
     # "//ydb/core/formats/arrow/program",
+    "//ydb/core/tx/columnshard/tracing",
     "//ydb/library/services",
   ]
 
@@ -44,6 +46,7 @@ library("counters") {
     "req_tracer.cpp",
     "scan.cpp",
     "splitter.cpp",
+    "startup_timeline.cpp",
     "writes_monitor.cpp",
   ]
 
