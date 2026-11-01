@@ -154,3 +154,4 @@ skipped (non-trivial):
   ydb/tools/ydb_bench BUNDLE,PY3_PROGRAM,PY_SRCS,RESOURCE<ydb_bench/build_type=${BUILD_TYPE}>,RUN_PROGRAM
   ydb/tools/ydbd_slice PY3_LIBRARY,PY_SRCS
   ydb/tools/ydbd_slice/bin PY3_PROGRAM,PY_MAIN
+  yql/essentials/udfs/common/math/ir LLVM_BC,USE_LLVM_BC16

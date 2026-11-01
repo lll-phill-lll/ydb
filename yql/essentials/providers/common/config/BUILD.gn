@@ -1,6 +1,7 @@
 library("config") {
   public_deps = [
     "//library/cpp/containers/sorted_vector",
+    "//library/cpp/string_utils/levenshtein_diff",
     "//library/cpp/string_utils/parse_size",
     "//library/cpp/yson/node",
     "//yql/essentials/ast",
@@ -12,7 +13,6 @@ library("config") {
   ]
 
   deps = [
-    "//library/cpp/string_utils/levenshtein_diff",
     "//yql/essentials/providers/common/activation",
     "//yql/essentials/providers/common/proto",
   ]

@@ -1,6 +1,7 @@
 library("runtime_settings") {
   public_deps = [
     "//yql/essentials/core/credentials",
+    # "//yql/essentials/core/qplayer/storage/interface",
     "//yql/essentials/minikql/runtime_settings/proto",
     "//yql/essentials/providers/common/config",
     "//yql/essentials/utils",

@@ -8,6 +8,7 @@ library("rseq") {
   ]
 
   sources = [
+    "cpu_id.cpp",
     "per_cpu.cpp",
     "rseq.cpp",
   ]
