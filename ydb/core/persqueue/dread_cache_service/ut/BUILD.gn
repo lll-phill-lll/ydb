@@ -6,6 +6,7 @@ unittest_executable("ut") {
     "//ydb/core/persqueue/ut/common:pq_ut_common",
     "//ydb/core/testlib/default",  # peerdir only
     "//ydb/public/sdk/cpp/src/client/persqueue_public/ut/ut_utils",  # peerdir only
+    "//ydb/services/persqueue_v1/actors",
   ]
 
   sources = [
