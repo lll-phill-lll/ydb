@@ -634,6 +634,7 @@ group("tests") {
         "//ydb/core/viewer/ut",
         "//ydb/core/wrappers/ut",
         "//ydb/core/ydb_convert/ut",
+        "//ydb/core/ydb_convert/ut/permissions",
         "//ydb/core/ymq/actor/cloud_events/cloud_events_ut",
         "//ydb/core/ymq/actor/yc_search_ut",
         "//ydb/core/ymq/attributes/ut",

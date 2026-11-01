@@ -1,0 +1,23 @@
+unittest_executable("permissions") {
+  deps = [
+    "//library/cpp/testing/unittest",
+    "//ydb/core/ydb_convert",
+    "//yql/essentials/parser/pg_wrapper",  # peerdir only
+    "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
+    "//yql/essentials/sql/pg",  # peerdir only
+  ]
+
+  sources = [ "permissions_ut.cpp" ]
+
+  link_select = [
+    "YqlServicePolicy=exception_policy",
+    "allocator=tcmalloc",
+    "minikql_codegen=no_llvm",
+    "retro_spans=spans",
+    "topic_rpc=persqueue_v1",
+    "wasm=wasm_default",
+    "yql_pg_runtime=pg_wrapper",
+    "yql_pg_sql_translator=pg",
+    "yt_codegen=no_llvm",
+  ]
+}
