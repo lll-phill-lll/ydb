@@ -55,6 +55,7 @@ library("interconnect") {
     "interconnect_tcp_session.cpp",
     "interconnect_tcp_session_v2.cpp",
     "interconnect_uring_engine.cpp",
+    "interconnect_uring_engine_client.cpp",
     "interconnect_zc_processor.cpp",
     "load.cpp",
     "mock/ic_mock.cpp",
