@@ -9,6 +9,7 @@ library("async_jobs") {
     # "//library/cpp/monlib/dynamic_counters",
     "//ydb/core/formats/arrow",
     # "//ydb/core/tx/columnshard",
+    # "//ydb/core/tx/columnshard/counters",
     # "//ydb/core/tx/columnshard/engines/protos",  # peerdir only
     "//ydb/core/tx/datashard",
     # "//ydb/library/actors/struct_log",

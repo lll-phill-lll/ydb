@@ -58,4 +58,6 @@ library("test_helper") {
     "shard_reader.cpp",
     "shard_writer.cpp",
   ]
+
+  serialize_enum_headers = [ "inflight_test_enums.h" ]
 }

@@ -83,6 +83,7 @@ library("columnshard") {
     # "//ydb/library/conclusion",
     # "//ydb/library/yverify_stream",
     "//ydb/public/api/protos",
+    # "//ydb/services/bg_tasks/abstract",
     # "//ydb/services/metadata",
     # "//ydb/services/metadata/abstract",
   ]
@@ -162,7 +163,6 @@ library("columnshard") {
     # "//ydb/library/slide_limiter/usage",
     # "//ydb/library/yql/dq/actors",
     # "//ydb/library/yql/dq/actors/compute",
-    # "//ydb/services/bg_tasks/abstract",
     # "//yql/essentials/core/expr_nodes",  # peerdir only
     # "//yql/essentials/public/issue/protos",  # peerdir only
   ]
