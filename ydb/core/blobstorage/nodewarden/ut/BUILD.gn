@@ -30,6 +30,7 @@ unittest_executable("ut") {
     "//ydb/core/blobstorage/nodewarden/bind_queue_ut.cpp",
     "//ydb/core/blobstorage/nodewarden/blobstorage_executor_pool_mapping_ut.cpp",
     "//ydb/core/blobstorage/nodewarden/blobstorage_node_warden_ut.cpp",
+    "//ydb/core/blobstorage/nodewarden/distconf_selfheal_ut.cpp",
     "//ydb/core/blobstorage/nodewarden/distconf_ut.cpp",
     "//ydb/core/blobstorage/nodewarden/node_warden_cache_ut.cpp",
   ]
