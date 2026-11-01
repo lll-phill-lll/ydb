@@ -9,10 +9,7 @@ library("profiling") {
     # "//library/cpp/yt/system",
   ]
 
-  deps = [
-    "//library/cpp/yt/assert",
-    "//library/cpp/yt/threading",  # peerdir only
-  ]
+  deps = [ "//library/cpp/yt/assert" ]
 
   sources = [
     "histogram_snapshot.cpp",

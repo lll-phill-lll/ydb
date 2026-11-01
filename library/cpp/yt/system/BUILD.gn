@@ -9,6 +9,7 @@ library("system") {
   deps = [ "//library/cpp/yt/exception" ]
 
   sources = [
+    "access_spreader.cpp",
     "at_fork.cpp",
     "count_down_latch.cpp",
     "env.cpp",

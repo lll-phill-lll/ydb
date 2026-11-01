@@ -7,6 +7,7 @@ library("peephole") {
   ]
 
   deps = [
+    # "//library/cpp/yson/node",
     "//ydb/core/kqp/common",
     # "//ydb/core/kqp/expr_nodes",
     # "//ydb/core/kqp/gateway:interface",

@@ -200,6 +200,7 @@ library("_self") {
     "misc/histogram.cpp",
     "misc/id_generator.cpp",
     "misc/inotify.cpp",
+    "misc/jitter.cpp",
     "misc/linear_probe.cpp",
     "misc/memory_usage_tracker.cpp",
     "misc/parser_helpers.cpp",

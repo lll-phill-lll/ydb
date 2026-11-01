@@ -61,6 +61,7 @@ library("core") {
     "yql_default_valid_value.cpp",
     "yql_execution.cpp",
     "yql_expr_constraint.cpp",
+    "yql_expr_constraint_streaming.cpp",
     "yql_expr_csee.cpp",
     "yql_expr_optimize.cpp",
     "yql_expr_type_annotation.cpp",
