@@ -4,6 +4,7 @@ library("cms") {
     "//library/cpp/protobuf/json",
     "//ydb/core/base",
     "//ydb/core/blobstorage/base",
+    "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/cms/console",
     "//ydb/core/engine/minikql",
     "//ydb/core/mind",
@@ -31,7 +32,6 @@ library("cms") {
     # "//ydb/core/base/services",
     # "//ydb/core/blobstorage",  # peerdir only
     # "//ydb/core/blobstorage/crypto",  # peerdir only
-    "//ydb/core/blobstorage/nodewarden",
     "//ydb/core/erasure",
     # "//ydb/core/mind/bscontroller",  # peerdir only
     # "//ydb/library/aclib",  # peerdir only
