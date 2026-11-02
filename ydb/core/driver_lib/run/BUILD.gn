@@ -228,6 +228,8 @@ library("_self") {
     "//ydb/services/udf_store",
     "//ydb/services/udf_store/compile_controller",
     "//ydb/services/view",
+    # "//ydb/services/workload_manager",
+    # "//ydb/services/workload_manager/actors",
     "//ydb/services/workload_manager/service",
     "//ydb/services/ydb",
     # "//yql/essentials/minikql/comp_nodes",

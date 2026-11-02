@@ -3,9 +3,9 @@ YQL_LIBRARY()
 SRCS(
     cpu_load_actors.cpp  # gn: cpu_load_actors
     pool_handlers_actors.cpp
-    resource_pool_tracker.cpp
+    resource_pool_tracker.cpp  # gn: into ydb/services/workload_manager/service
     scheme_actors.cpp  # gn: scheme_actors
-    workload_manager_state_actor.cpp
+    workload_manager_state_actor.cpp  # gn: into ydb/services/workload_manager/service
 )
 
 PEERDIR(

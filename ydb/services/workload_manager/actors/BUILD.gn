@@ -3,7 +3,11 @@ library("actors") {
     ":cpu_load_actors",
     ":scheme_actors",
     "//ydb/core/protos",
+    # "//ydb/core/resource_pools",
+    # "//ydb/library/aclib",
+    # "//ydb/library/actors/core",
     # "//ydb/services/workload_manager",
+    # "//ydb/services/workload_manager/metadata_subscription/resource_pool_classifier",
   ]
 
   deps = [

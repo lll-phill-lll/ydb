@@ -1,9 +1,8 @@
 library("workload_manager") {
   public_deps = [
+    # "//library/cpp/threading/atomic_shared_ptr",
     "//ydb/core/base",
     "//ydb/core/kqp/common",
-    "//ydb/core/kqp/common/simple",
-    "//ydb/core/kqp/query_data",
     "//ydb/core/protos",
     "//ydb/core/resource_pools",
     "//ydb/core/scheme",
@@ -19,6 +18,7 @@ library("workload_manager") {
   deps = [
     # "//contrib/libs/protobuf",
     # "//ydb/core/cms/console",  # peerdir only
+    "//ydb/core/kqp/query_data",
     # "//ydb/core/mind",  # peerdir only
     "//ydb/library/yql/providers/pq/common",
     "//ydb/library/yql/providers/pq/proto",
