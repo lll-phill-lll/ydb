@@ -1,6 +1,6 @@
 library("subscription") {
-  public_deps = [
-    # "//library/cpp/threading/future",
+  deps = [
+    # "//library/cpp/threading/future",  # peerdir only
   ]
 
   sources = [

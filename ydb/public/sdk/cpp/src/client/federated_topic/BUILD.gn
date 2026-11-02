@@ -23,7 +23,6 @@ library("federated_topic") {
     # "//ydb/public/sdk/cpp/src/client/federated_topic/ut/fds_mock",  # peerdir only
     "//ydb/public/sdk/cpp/src/client/impl/internal/logger",
     # "//ydb/public/sdk/cpp/src/library/grpc/client",  # peerdir only
-    # "//ydb/public/sdk/cpp/src/library/persqueue/obfuscate",  # peerdir only
     "//ydb/public/sdk/cpp/src/library/string_utils/helpers",
   ]
 
