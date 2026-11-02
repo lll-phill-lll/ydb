@@ -14,11 +14,14 @@ library("rbo_resources") {
 unittest_executable("rbo") {
   deps = [
     ":rbo_resources",
+    "//contrib/libs/apache/arrow",
     "//library/cpp/json",
+    "//library/cpp/monlib/dynamic_counters",
     "//library/cpp/random_provider",
     "//library/cpp/resource",  # peerdir only
     "//library/cpp/testing/unittest",
     "//library/cpp/time_provider",
+    "//ydb/core/base",
     "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/kqp",  # peerdir only
     "//ydb/core/kqp/common",
@@ -42,6 +45,7 @@ unittest_executable("rbo") {
     "//ydb/library/aclib",
     "//ydb/library/actors/testlib",
     "//ydb/library/benchmarks/queries/tpch",  # peerdir only
+    "//ydb/library/formats/arrow/hash",
     "//ydb/library/plan2svg",
     "//ydb/library/ut",
     "//ydb/library/yql/udfs/statistics_internal",  # peerdir only
@@ -70,6 +74,7 @@ unittest_executable("rbo") {
     "kqp_rbo_global_ut.cpp",
     "kqp_rbo_lookup_join_ut.cpp",
     "kqp_rbo_lowering_ut.cpp",
+    "kqp_rbo_olap_distinct_ut.cpp",
     "kqp_rbo_olap_ut.cpp",
     "kqp_rbo_yql_ut.cpp",
   ]
