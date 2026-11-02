@@ -13,6 +13,7 @@ unittest_executable("ut") {
   sources = [
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_blobmap_ut.cpp",
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_iter_ut.cpp",
+    "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_mirror3dc_state_ut.cpp",
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_partlayout_ut.cpp",
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_ut.cpp",
   ]
