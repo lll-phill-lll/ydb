@@ -6,6 +6,7 @@ unittest_executable("ut_direct_restore") {
     "//library/cpp/svnversion",  # peerdir only
     "//library/cpp/testing/hook",
     "//library/cpp/testing/unittest",
+    "//ydb/core/backup/common",
     "//ydb/core/kqp/ut/common",  # peerdir only
     "//ydb/core/protos",
     "//ydb/core/testlib/actors",
@@ -13,6 +14,8 @@ unittest_executable("ut_direct_restore") {
     "//ydb/core/tx",  # peerdir only
     "//ydb/core/tx/datashard",
     "//ydb/core/tx/datashard/ut_common",
+    "//ydb/core/tx/scheme_cache",
+    "//ydb/core/wrappers",
     "//ydb/core/wrappers:ut_helpers",
     "//ydb/library/aws_init",
     "//ydb/public/lib/yson_value",  # peerdir only
