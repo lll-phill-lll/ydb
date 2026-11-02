@@ -6,6 +6,7 @@
 #include "group_mapper.h"
 #include "group_layout_checker.h"
 #include "ut_helpers.h"
+#include "impl.h"
 
 using namespace NKikimr;
 using namespace NKikimr::NBsController;

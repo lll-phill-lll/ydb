@@ -22,6 +22,7 @@ unittest_executable("ut_bridge") {
     "//ydb/core/blobstorage/ut_blobstorage/bridge_failover.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_get.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_keep_flags.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/bridge_mixed_storage.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_piles.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_rejoin.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/bridge_remove_pile.cpp",
