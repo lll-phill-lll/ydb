@@ -48,6 +48,7 @@ library("mon") {
     # "//library/cpp/string_utils/url",  # peerdir only
     "//ydb/core/grpc_services/base",
     # "//ydb/core/node_whiteboard",
+    "//ydb/core/path_aliasing",
     "//ydb/core/protos",
     # "//ydb/core/util",
     # "//ydb/library/aclib",  # peerdir only
