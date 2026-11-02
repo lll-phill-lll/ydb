@@ -97,6 +97,7 @@ library("columnshard") {
     # "//library/cpp/lwtrace",
     "//library/cpp/lwtrace/mon",
     # "//library/cpp/monlib/service/pages",
+    # "//library/cpp/retry",
     # "//ydb/core/actorlib_impl",  # peerdir only
     # "//ydb/core/base/generated",  # peerdir only
     # "//ydb/core/cms/console",
