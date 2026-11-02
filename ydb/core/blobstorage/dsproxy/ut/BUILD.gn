@@ -24,6 +24,7 @@ unittest_executable("ut") {
     "dsproxy_dormant_ut.cpp",
     "dsproxy_get_block_ut.cpp",
     "dsproxy_get_ut.cpp",
+    "dsproxy_index_range_ut.cpp",
     "dsproxy_patch_ut.cpp",
     "dsproxy_put_ut.cpp",
     "dsproxy_quorum_tracker_ut.cpp",
