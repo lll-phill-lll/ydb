@@ -5,6 +5,7 @@ unittest_executable("ut_strategy") {
   ]
 
   sources = [
+    "mirror3dc_get_ut.cpp",
     "mirror3dc_put_ut.cpp",
     "strategy_ut.cpp",
   ]
