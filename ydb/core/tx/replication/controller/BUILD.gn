@@ -33,6 +33,7 @@ library("controller") {
     # "//ydb/core/tx/scheme_cache",
     # "//ydb/core/tx/schemeshard",
     "//ydb/core/ydb_convert",
+    "//ydb/library/naming_conventions",
     "//ydb/public/api/protos",
     # "//ydb/services/metadata",
     "//ydb/services/metadata/secret",

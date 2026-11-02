@@ -1,3 +1,6 @@
 library("naming_conventions") {
-  sources = [ "naming_conventions.cpp" ]
+  sources = [
+    "naming_conventions.cpp",
+    "scheme_object_names.cpp",
+  ]
 }

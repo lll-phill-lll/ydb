@@ -15,6 +15,7 @@ library("common") {
     # "//library/cpp/threading/future",
     "//library/cpp/yaml/as",
     # "//ydb/library/accessor",
+    "//ydb/library/naming_conventions",
     "//ydb/library/plan2svg",
     "//ydb/public/api/protos",
     "//ydb/public/lib/json_value",

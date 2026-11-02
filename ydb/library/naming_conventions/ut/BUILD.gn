@@ -4,7 +4,10 @@ unittest_executable("ut") {
     "//ydb/library/naming_conventions",
   ]
 
-  sources = [ "naming_conventions_ut.cpp" ]
+  sources = [
+    "naming_conventions_ut.cpp",
+    "scheme_object_names_ut.cpp",
+  ]
 
   include_dirs = [ "//ydb/library/naming_conventions" ]
 

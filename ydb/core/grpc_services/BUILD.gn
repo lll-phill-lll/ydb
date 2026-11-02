@@ -118,6 +118,7 @@ library("grpc_services") {
     "//ydb/library/login",
     "//ydb/library/login/sasl",
     # "//ydb/library/mkql_proto",
+    "//ydb/library/naming_conventions",
     # "//ydb/library/protobuf_printer",  # peerdir only
     # "//ydb/library/security",
     "//ydb/library/yaml_config",
