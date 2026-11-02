@@ -7,6 +7,7 @@ unittest_executable("ut") {
     "//ydb/library/yaml_config",
     "//ydb/library/yaml_config/public",
     "//ydb/library/yaml_config/ut/protos",
+    "//ydb/library/yaml_json",
   ]
 
   sources = [

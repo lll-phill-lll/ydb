@@ -28,6 +28,7 @@ library("base") {
     "blobstorage_syncstate.cpp",
     "blobstorage_vdiskid.cpp",
     "html.cpp",
+    "storage_pool_pile_override.cpp",
     "vdisk_priorities.cpp",
   ]
 }
