@@ -2,6 +2,7 @@ unittest_executable("ut") {
   deps = [
     "//library/cpp/testing/unittest",
     "//ydb/core/base",
+    "//ydb/core/cms/console",
     "//ydb/core/memory_controller",
     "//ydb/core/tablet",
     "//ydb/core/tablet_flat",

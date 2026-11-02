@@ -3,6 +3,7 @@ library("resource_pools") {
 
   deps = [
     "//library/cpp/regex/pcre",
+    "//ydb/core/base",
     "//ydb/library/aclib",
   ]
 

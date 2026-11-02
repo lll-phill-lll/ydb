@@ -6,6 +6,7 @@ library("node_service") {
     # "//ydb/core/kqp/counters",
     "//ydb/core/kqp/federated_query",
     # "//ydb/core/kqp/rm_service",
+    "//ydb/core/kqp/runtime",
     "//ydb/core/protos",
     # "//ydb/core/util",
     # "//ydb/library/accessor",
@@ -23,7 +24,6 @@ library("node_service") {
     "//ydb/core/base",
     # "//ydb/core/cms/console",
     # "//ydb/core/kqp/common/shutdown",
-    "//ydb/core/kqp/runtime",
     # "//ydb/core/mind",  # peerdir only
     # "//ydb/core/mon",
     # "//ydb/core/tablet",  # peerdir only
