@@ -33,7 +33,7 @@ library("runlib") {
     # "//ydb/public/lib/json_value",
     # "//ydb/public/sdk/cpp/src/client/result",
     "//yql/essentials/minikql/invoke_builtins",
-    # "//yql/essentials/public/udf",
+    # "//yql/essentials/public/udf",  # peerdir only
     "//yt/yql/providers/yt/mkql_dq",
   ]
 

@@ -28,6 +28,7 @@ library("translation") {
     # "//library/cpp/protobuf/util",
     # "//library/cpp/yson/node",
     "//yql/essentials/core/issue",  # peerdir only
+    "//yql/essentials/core/spark_meta",
     "//yql/essentials/minikql",
     # "//yql/essentials/parser/pg_catalog",
     # "//yql/essentials/parser/proto_ast/collect_issues",

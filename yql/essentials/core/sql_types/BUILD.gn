@@ -9,7 +9,6 @@ library("sql_types") {
     "match_recognize.cpp",
     "normalize_name.cpp",
     "simple_types.cpp",
-    "spark_functions.cpp",
   ]
 
   serialize_enum_headers = [

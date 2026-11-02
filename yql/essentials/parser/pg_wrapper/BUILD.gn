@@ -162,6 +162,7 @@ config("pg_wrapper_public_config") {
 library("pg_wrapper") {
   public_deps = [
     # "//contrib/libs/apache/arrow",
+    "//contrib/libs/icu",
     "//yql/essentials/minikql",
     # "//yql/essentials/minikql/arrow",
     # "//yql/essentials/minikql/comp_nodes",
@@ -174,7 +175,6 @@ library("pg_wrapper") {
   ]
 
   deps = [
-    "//contrib/libs/icu",
     # "//contrib/libs/libc_compat",  # peerdir only
     "//contrib/libs/libxml",
     "//contrib/libs/lz4",
