@@ -14,6 +14,7 @@ unittest_executable("tx") {
     "//ydb/core/kqp/runtime",
     "//ydb/core/kqp/ut/common",
     "//ydb/core/protos/schemeshard",
+    "//ydb/core/scheme",
     "//ydb/core/testlib",
     "//ydb/core/tx/columnshard/hooks/abstract",
     "//ydb/core/tx/columnshard/hooks/testing",
