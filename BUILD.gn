@@ -445,6 +445,7 @@ group("tests") {
         "//ydb/core/tx/columnshard/backup/async_jobs/ut",
         "//ydb/core/tx/columnshard/backup/import/ut",
         "//ydb/core/tx/columnshard/backup/iscan/ut",
+        "//ydb/core/tx/columnshard/backup/iscan/ut_retry",
         "//ydb/core/tx/columnshard/data_accessor/ut",
         "//ydb/core/tx/columnshard/engines/reader/trivial_reader/duplicates/ut",
         "//ydb/core/tx/columnshard/engines/storage/indexes/bits_storage/ut",
