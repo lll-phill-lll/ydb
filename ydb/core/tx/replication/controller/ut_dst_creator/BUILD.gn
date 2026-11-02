@@ -5,6 +5,7 @@ unittest_executable("ut_dst_creator") {
     "//ydb/core/protos/schemeshard",
     "//ydb/core/testlib",
     "//ydb/core/tx/replication/controller",
+    "//ydb/core/tx/replication/service",
     "//ydb/core/tx/replication/ut_helpers",
     "//ydb/core/tx/replication/ydb_proxy",
     "//ydb/core/tx/schemeshard",
