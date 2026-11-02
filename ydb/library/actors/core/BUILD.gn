@@ -26,7 +26,6 @@ library("core") {
 
   deps = [
     # "//library/cpp/balloc",
-    # "//library/cpp/execprofile",  # peerdir only
     "//library/cpp/string_utils/base64",
     # "//library/cpp/threading/queue",
     # "//ydb/library/actors/interconnect",

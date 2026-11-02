@@ -27,8 +27,6 @@ library("interconnect") {
     "//library/cpp/monlib/service/pages/resources",  # peerdir only
     "//library/cpp/monlib/service/pages/tablesorter",  # peerdir only
     "//library/cpp/openssl/init",  # peerdir only
-    # "//library/cpp/packedtypes",  # peerdir only
-    # "//ydb/library/actors/dnscachelib",  # peerdir only
     # "//ydb/library/actors/dnsresolver",
     "//ydb/library/actors/helpers",
     "//ydb/library/actors/interconnect/rdma/cq_actor",

@@ -1,7 +1,6 @@
 library("http") {
   public_deps = [
     "//contrib/libs/openssl",
-    # "//library/cpp/dns",
     "//library/cpp/monlib/metrics",
     "//ydb/library/actors/core",
     # "//ydb/library/actors/interconnect/poller",

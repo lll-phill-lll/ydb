@@ -20,7 +20,6 @@ library("wilson") {
     # "//contrib/proto/opentelemetry/opentelemetry/proto/collector/trace/v1",
     "//library/cpp/string_utils/url",
     "//ydb/library/actors/protos",
-    # "//ydb/library/actors/wilson/protos",  # peerdir only
   ]
 
   sources = [

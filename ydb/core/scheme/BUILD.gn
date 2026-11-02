@@ -17,7 +17,6 @@ library("scheme") {
     "//library/cpp/lwtrace/mon",  # peerdir only
     # "//library/cpp/yson",  # peerdir only
     "//ydb/core/protos",
-    # "//ydb/library/pretty_types_print/protobuf",  # peerdir only
   ]
 
   sources = [
