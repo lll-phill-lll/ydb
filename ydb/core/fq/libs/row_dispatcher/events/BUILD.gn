@@ -5,11 +5,6 @@ library("events") {
     # "//ydb/library/actors/core",
     "//ydb/library/yql/providers/pq/proto",
     # "//yql/essentials/public/issue",
-    # "//yql/essentials/public/purecalc/common",
-  ]
-
-  deps = [
-    # "//ydb/library/yql/providers/pq/provider",  # peerdir only
   ]
 
   sources = [ "data_plane.cpp" ]

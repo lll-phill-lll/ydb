@@ -15,7 +15,6 @@ library("common") {
     "//contrib/libs/fmt",
     "//contrib/libs/re2",
     # "//ydb/core/external_sources",
-    # "//ydb/core/fq/libs/control_plane_storage/events",  # peerdir only
     # "//ydb/core/fq/libs/events",  # peerdir only
     "//ydb/core/fq/libs/result_formatter",
     "//ydb/public/sdk/cpp/src/client/proto",

@@ -25,10 +25,8 @@ library("async_io") {
     # "//ydb/core/fq/libs/events",
     # "//ydb/core/fq/libs/graph_params/proto",  # peerdir only
     # "//ydb/core/fq/libs/protos",  # peerdir only
-    # "//ydb/core/fq/libs/row_dispatcher",  # peerdir only
     "//ydb/core/fq/libs/row_dispatcher/events",
     # "//ydb/library/accessor",
-    # "//ydb/library/actors/log_backend",
     "//ydb/library/services",
     # "//ydb/library/yql/dq/actors/common",
     "//ydb/library/yql/dq/actors/protos",

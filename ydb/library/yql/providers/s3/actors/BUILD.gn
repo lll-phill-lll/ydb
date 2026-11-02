@@ -38,8 +38,6 @@ library("actors") {
     "//ydb/library/services",
     "//ydb/library/yql/dq/actors/common",
     "//ydb/library/yql/dq/actors/protos",
-    # "//ydb/library/yql/providers/common/arrow",  # peerdir only
-    # "//ydb/library/yql/providers/common/arrow/interface",  # peerdir only
     "//ydb/library/yql/providers/generic/pushdown",
     "//ydb/library/yql/providers/s3/common",
     "//ydb/library/yql/providers/s3/compressors",

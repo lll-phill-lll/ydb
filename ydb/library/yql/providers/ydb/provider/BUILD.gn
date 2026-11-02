@@ -14,6 +14,7 @@ library("provider") {
     # "//library/cpp/time_provider",  # peerdir only
     # "//library/cpp/yson/node",
     # "//ydb/core/fq/libs/common",  # peerdir only
+    # "//ydb/library/pretty_types_print/protobuf",  # peerdir only
     # "//ydb/library/yql/dq/expr_nodes",
     # "//ydb/library/yql/providers/dq/common",
     # "//ydb/library/yql/providers/dq/expr_nodes",

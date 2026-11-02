@@ -15,7 +15,6 @@ library("object_listers") {
     "//ydb/library/yql/utils/actor_log",
     "//yql/essentials/utils",
     "//yql/essentials/utils/log",
-    # "//yql/essentials/utils/threading",  # peerdir only
   ]
 
   sources = [
