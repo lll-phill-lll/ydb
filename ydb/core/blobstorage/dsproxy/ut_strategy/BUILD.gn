@@ -4,7 +4,10 @@ unittest_executable("ut_strategy") {
     "//ydb/core/blobstorage/dsproxy",
   ]
 
-  sources = [ "strategy_ut.cpp" ]
+  sources = [
+    "mirror3dc_put_ut.cpp",
+    "strategy_ut.cpp",
+  ]
 
   link_select = [
     "YqlServicePolicy=stub",
