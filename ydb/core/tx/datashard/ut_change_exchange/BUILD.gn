@@ -13,6 +13,7 @@ unittest_executable("ut_change_exchange") {
     "//ydb/core/persqueue/events",
     "//ydb/core/persqueue/public/write_meta",
     "//ydb/core/protos/schemeshard",
+    "//ydb/core/tablet",
     "//ydb/core/tablet_flat",
     "//ydb/core/testlib/actors",
     "//ydb/core/testlib/pg",  # peerdir only
