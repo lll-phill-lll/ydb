@@ -36,7 +36,6 @@ library("provider") {
     "//yql/essentials/providers/common/activation",
     "//yql/essentials/providers/common/config/transformer",
     "//yql/essentials/providers/common/provider",
-    # "//yql/essentials/providers/result/expr_nodes",
     # "//yql/essentials/public/issue",
     "//yql/essentials/utils/log",
   ]

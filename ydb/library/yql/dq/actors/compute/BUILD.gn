@@ -37,7 +37,6 @@ library("compute") {
     # "//ydb/core/quoter/public",
     # "//ydb/library/actors/wilson/protos",  # peerdir only
     # "//ydb/library/ydb_issue/proto",  # peerdir only
-    # "//ydb/library/yql/dq/tasks",  # peerdir only
   ]
 
   sources = [

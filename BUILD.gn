@@ -34,6 +34,7 @@ group("all") {
         "//ydb/library/yaml_config/tools/dump_ds_init:yaml-to-proto-dump-ds-init",
         "//ydb/library/yaml_config/tools/fuse:yaml-config-fuse",
         "//ydb/library/yql/providers/clickhouse/actors",
+        "//ydb/library/yql/providers/dq/actors/events",
         "//ydb/library/yql/providers/function/provider",
         "//ydb/library/yql/providers/ydb/actors",
         "//ydb/library/yql/providers/ydb/comp_nodes",
