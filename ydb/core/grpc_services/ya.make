@@ -230,6 +230,7 @@ PEERDIR(
     ydb/library/aclib
     ydb/library/cloud_permissions
     ydb/library/mkql_proto
+    ydb/library/naming_conventions
     ydb/library/persqueue/topic_parser
     ydb/library/protobuf_printer
     ydb/library/services
