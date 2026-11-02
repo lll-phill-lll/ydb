@@ -23,6 +23,7 @@ library("viewer") {
     # "//ydb/library/actors/http",
     # "//ydb/library/actors/interconnect",
     "//ydb/library/actors/wilson",
+    # "//ydb/library/protobuf_printer",
     "//ydb/library/services",
     # "//ydb/library/wilson_ids",
     # "//ydb/public/sdk/cpp/src/client/types/status",
