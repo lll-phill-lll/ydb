@@ -5,10 +5,12 @@ unittest_executable("ut_replication") {
     "//ydb/core/blobstorage/vdisk/common",
     "//ydb/core/blobstorage/vdisk/hulldb/base:base_types",
     "//ydb/core/blobstorage/vdisk/repl",
+    "//ydb/core/blobstorage/vdisk/syncer",
   ]
 
   sources = [
     "//ydb/core/blobstorage/ut_blobstorage/recover_lost_data_generation.cpp",
+    "//ydb/core/blobstorage/ut_blobstorage/recover_lost_data_restart.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/replication.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/replication_generation.cpp",
     "//ydb/core/blobstorage/ut_blobstorage/replication_huge.cpp",
