@@ -52,6 +52,7 @@ library("program") {
     "index.cpp",
     "kernel_logic.cpp",
     "original.cpp",
+    "pattern_hints.cpp",
     "projection.cpp",
     "reserve.cpp",
     "stream_logic.cpp",

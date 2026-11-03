@@ -8,6 +8,7 @@ unittest_executable("ut") {
     "//ydb/core/formats/arrow/program",
     "//ydb/core/kqp/compute_actor:events",
     "//ydb/core/kqp/ut/common",
+    "//ydb/core/local_indexes/bloom",
     "//ydb/core/protos",
     "//ydb/core/scheme",
     "//ydb/core/tablet",  # peerdir only
@@ -57,6 +58,7 @@ unittest_executable("ut") {
   sources = [
     "helper.cpp",
     "ut_actualizer.cpp",
+    "ut_bloom_ngram_size.cpp",
     "ut_index_blob_size_limit.cpp",
     "ut_index_info_schema_diff.cpp",
     "ut_minmax_index.cpp",

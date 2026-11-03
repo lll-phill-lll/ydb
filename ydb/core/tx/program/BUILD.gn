@@ -15,6 +15,7 @@ library("program") {
     # "//ydb/core/tablet_flat",  # peerdir only
     # "//ydb/core/tx/columnshard/common",
     # "//ydb/core/tx/columnshard/engines/scheme/abstract",
+    # "//ydb/library/actors/core",
     # "//ydb/library/arrow_kernels",
     # "//ydb/library/formats/arrow/validation",
     "//yql/essentials/core/arrow_kernels/registry",

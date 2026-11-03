@@ -72,6 +72,7 @@ library("physical") {
     "kqp_opt_phy_sort.cpp",
     "kqp_opt_phy_source.cpp",
     "kqp_opt_phy_stage_float_up.cpp",
+    "like_hint.cpp",
     "predicate_collector.cpp",
   ]
 
