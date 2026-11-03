@@ -1,5 +1,6 @@
 library("ydb") {
   public_deps = [
+    # "//library/cpp/monlib/dynamic_counters",
     # "//library/cpp/retry",
     # "//library/cpp/threading/future",
     "//ydb/core/fq/libs/config/protos",
@@ -17,6 +18,7 @@ library("ydb") {
   ]
 
   deps = [
+    # "//library/cpp/time_provider",
     # "//ydb/core/base",
     # "//ydb/core/base/generated",  # peerdir only
     # "//ydb/core/fq/libs/config",  # peerdir only

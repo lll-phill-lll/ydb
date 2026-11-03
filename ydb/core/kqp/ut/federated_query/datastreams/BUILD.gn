@@ -12,7 +12,9 @@ unittest_executable("datastreams") {
     "//ydb/core/fq/libs/checkpoint_storage/events",
     "//ydb/core/fq/libs/checkpoint_storage/proto",
     "//ydb/core/fq/libs/checkpointing_common",
+    "//ydb/core/fq/libs/ydb",
     "//ydb/core/kqp",  # peerdir only
+    "//ydb/core/kqp/common",
     "//ydb/core/kqp/common/events",
     "//ydb/core/kqp/common/simple",
     "//ydb/core/kqp/gateway/behaviour/streaming_query",

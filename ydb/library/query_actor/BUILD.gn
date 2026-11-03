@@ -13,6 +13,8 @@ library("query_actor") {
   ]
 
   deps = [
+    # "//contrib/libs/protobuf",
+    "//library/cpp/protobuf/interop",
     # "//ydb/core/base",
     "//ydb/core/grpc_services",
   ]
