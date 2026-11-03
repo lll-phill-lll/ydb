@@ -17,6 +17,7 @@ unittest_executable("ut") {
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_mirror3dc_write_quorum_ut.cpp",
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_partlayout_ut.cpp",
     "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_ut.cpp",
+    "//ydb/core/blobstorage/groupinfo/blobstorage_groupinfo_widelayout_ut.cpp",
   ]
 
   include_dirs = [ "//ydb/core/blobstorage/groupinfo" ]

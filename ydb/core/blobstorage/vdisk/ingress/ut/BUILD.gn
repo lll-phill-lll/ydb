@@ -13,6 +13,7 @@ unittest_executable("ut") {
   sources = [
     "//ydb/core/blobstorage/vdisk/ingress/blobstorage_ingress_matrix_ut.cpp",
     "//ydb/core/blobstorage/vdisk/ingress/blobstorage_ingress_ut.cpp",
+    "//ydb/core/blobstorage/vdisk/ingress/blobstorage_ingress_widevector_ut.cpp",
   ]
 
   include_dirs = [ "//ydb/core/blobstorage/vdisk/ingress" ]
