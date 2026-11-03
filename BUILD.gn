@@ -242,6 +242,7 @@ group("tests") {
         "//ydb/core/grpc_services/grpc_request_tracing_ut",
         "//ydb/core/grpc_services/tablet/ut",
         "//ydb/core/grpc_services/ut",
+        "//ydb/core/grpc_services/ut_read_rows_bench",
         "//ydb/core/grpc_streaming/ut",
         "//ydb/core/health_check/ut",
         "//ydb/core/http_proxy/sqs_xml/ut",

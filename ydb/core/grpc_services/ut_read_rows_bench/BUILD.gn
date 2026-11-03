@@ -1,0 +1,32 @@
+unittest_executable("ut_read_rows_bench") {
+  deps = [
+    "//library/cpp/testing/unittest",
+    "//ydb/core/grpc_services",  # peerdir only
+    "//ydb/core/kqp",  # peerdir only
+    "//ydb/core/kqp/ut/common",  # peerdir only
+    "//ydb/core/tx/datashard",
+    "//ydb/core/ydb_convert",
+    "//ydb/public/sdk/cpp/src/client/proto",
+    "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
+    "//yql/essentials/sql/pg_dummy",  # peerdir only
+    "//yql/essentials/types/binary_json",
+  ]
+
+  sources = [ "read_rows_bench.cpp" ]
+
+  include_dirs = [
+    "//ydb/core/grpc_services",  # peerdir only
+  ]
+
+  link_select = [
+    "YqlServicePolicy=exception_policy",
+    "allocator=tcmalloc",
+    "minikql_codegen=llvm16",
+    "retro_spans=spans",
+    "topic_rpc=persqueue_v1",
+    "wasm=engine",
+    "yql_pg_runtime=pg_dummy",
+    "yql_pg_sql_translator=pg_dummy",
+    "yt_codegen=llvm16",
+  ]
+}
