@@ -21,6 +21,7 @@ unittest_executable("ut_console") {
     "//ydb/core/tx/schemeshard",
     "//ydb/library/actors/http",
     "//ydb/library/actors/interconnect",
+    "//ydb/library/yaml_config",
   ]
 
   sources = [
