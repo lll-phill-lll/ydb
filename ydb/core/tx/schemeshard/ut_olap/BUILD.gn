@@ -9,6 +9,7 @@ unittest_executable("ut_olap") {
     "//ydb/core/formats/arrow",
     "//ydb/core/kqp/compute_actor",  # peerdir only
     "//ydb/core/protos",
+    "//ydb/core/scheme",
     "//ydb/core/scheme_types",
     "//ydb/core/testlib/actors",
     "//ydb/core/testlib/pg",  # peerdir only
@@ -22,6 +23,8 @@ unittest_executable("ut_olap") {
     "//ydb/core/tx/schemeshard/olap/common",
     "//ydb/core/tx/schemeshard/olap/schema",
     "//ydb/core/tx/schemeshard/ut_helpers",
+    "//yql/essentials/ast",
+    "//yql/essentials/parser/pg_wrapper/interface/type_desc",
     "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
   ]
 
