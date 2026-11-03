@@ -30,6 +30,7 @@ library("nodewarden") {
   deps = [
     # "//contrib/libs/protobuf",
     "//contrib/libs/xxhash",
+    # "//library/cpp/containers/absl",
     "//library/cpp/lwtrace/mon",
     "//library/cpp/openssl/crypto",
     # "//library/cpp/protobuf/json",
