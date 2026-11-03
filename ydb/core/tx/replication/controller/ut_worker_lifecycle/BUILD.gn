@@ -9,9 +9,13 @@ unittest_executable("ut_worker_lifecycle") {
     "//ydb/core/tx/replication/ut_helpers",
     "//ydb/core/tx/tx_proxy:public",
     "//ydb/library/actors/core",
+    "//ydb/library/mkql_proto/protos",
   ]
 
-  sources = [ "//ydb/core/tx/replication/controller/worker_lifecycle_ut.cpp" ]
+  sources = [
+    "//ydb/core/tx/replication/controller/session_lifecycle_ut.cpp",
+    "//ydb/core/tx/replication/controller/worker_lifecycle_ut.cpp",
+  ]
 
   include_dirs = [ "//ydb/core/tx/replication/controller" ]
 
