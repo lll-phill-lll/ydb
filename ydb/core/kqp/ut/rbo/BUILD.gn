@@ -36,9 +36,11 @@ unittest_executable("rbo") {
     "//ydb/core/kqp/ut/common",
     "//ydb/core/kqp/ut/olap/helpers",
     "//ydb/core/statistics:ut_common",
+    "//ydb/core/testlib",
     "//ydb/core/tx/columnshard",
     "//ydb/core/tx/columnshard/engines/scheme",
     "//ydb/core/tx/columnshard/hooks/testing",
+    "//ydb/core/tx/data_events",
     "//ydb/core/tx/datashard",
     "//ydb/core/tx/datashard/ut_common",
     "//ydb/core/wrappers",
@@ -51,6 +53,7 @@ unittest_executable("rbo") {
     "//ydb/library/yql/udfs/statistics_internal",  # peerdir only
     "//ydb/public/lib/ut_helpers",
     "//ydb/public/lib/ydb_cli/common",
+    "//ydb/public/sdk/cpp/src/client/proto",
     "//ydb/public/sdk/cpp/src/client/result",
     "//yql/essentials/core",
     "//yql/essentials/core/pg_settings",
@@ -68,6 +71,10 @@ unittest_executable("rbo") {
   ]
 
   sources = [
+    "kqp_effects_ut.cpp",
+    "kqp_immediate_effects_ut.cpp",
+    "kqp_inplace_update_ut.cpp",
+    "kqp_overload_ut.cpp",
     "kqp_rbo_compatibility_ut.cpp",
     "kqp_rbo_copy_ut.cpp",
     "kqp_rbo_decorrelation_ut.cpp",
@@ -77,6 +84,8 @@ unittest_executable("rbo") {
     "kqp_rbo_olap_distinct_ut.cpp",
     "kqp_rbo_olap_ut.cpp",
     "kqp_rbo_yql_ut.cpp",
+    "kqp_reattach_ut.cpp",
+    "kqp_write_ut.cpp",
   ]
 
   include_dirs = [
