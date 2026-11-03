@@ -5,6 +5,7 @@ unittest_executable("ut_replication") {
     "//library/cpp/svnversion",  # peerdir only
     "//ydb/core/grpc_services/local_rpc",
     "//ydb/core/kqp/ut/common",  # peerdir only
+    "//ydb/core/protos/schemeshard",
     "//ydb/core/testlib/actors",
     "//ydb/core/testlib/default",  # peerdir only
     "//ydb/core/tx",  # peerdir only
