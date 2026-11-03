@@ -17,6 +17,7 @@ unittest_executable("datastreams") {
     "//ydb/core/kqp/common/simple",
     "//ydb/core/kqp/gateway/behaviour/streaming_query",
     "//ydb/core/kqp/gateway/behaviour/streaming_query/common",
+    "//ydb/core/kqp/runtime",
     "//ydb/core/kqp/script_executions/common",
     "//ydb/core/kqp/script_executions/table_queries",
     "//ydb/core/kqp/ut/common",
