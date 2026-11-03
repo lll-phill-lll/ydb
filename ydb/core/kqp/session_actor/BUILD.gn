@@ -38,6 +38,7 @@ library("session_actor") {
     "//ydb/core/kqp/query_data",  # peerdir only
     "//ydb/core/kqp/rm_service",
     "//ydb/core/kqp/topics",  # peerdir only
+    "//ydb/core/path_aliasing",
     "//ydb/core/protos/schemeshard",
     # "//ydb/core/sys_view/common",
     # "//ydb/core/sys_view/service",

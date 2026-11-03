@@ -4,6 +4,7 @@ unittest_executable("query") {
     "//library/cpp/iterator",
     "//library/cpp/json",
     "//ydb/core/base",
+    "//ydb/core/cms/console",
     "//ydb/core/kqp",  # peerdir only
     "//ydb/core/kqp/common/compilation:interface",
     "//ydb/core/kqp/common/events",
@@ -12,7 +13,9 @@ unittest_executable("query") {
     "//ydb/core/kqp/executer_actor",
     "//ydb/core/kqp/opt",
     "//ydb/core/kqp/provider",
+    "//ydb/core/kqp/query_data",
     "//ydb/core/kqp/ut/common",
+    "//ydb/core/path_aliasing",
     "//ydb/core/statistics/aggregator",
     "//ydb/core/statistics:ut_common",
     "//ydb/core/tablet",

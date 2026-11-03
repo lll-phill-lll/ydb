@@ -12,6 +12,7 @@ unittest_executable("ut") {
     "//ydb/core/mon",  # peerdir only
     "//ydb/core/mon:ut_utils",
     "//ydb/core/node_whiteboard",
+    "//ydb/core/path_aliasing",
     "//ydb/core/persqueue/ut/common",
     "//ydb/core/tablet",
     "//ydb/core/tablet_flat",

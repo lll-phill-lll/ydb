@@ -30,6 +30,7 @@ library("compile_service") {
     "//ydb/core/kqp/rm_service",
     "//ydb/core/kqp/session_actor:worker_common",
     "//ydb/core/kqp/tracing",
+    "//ydb/core/path_aliasing",
     "//ydb/core/ydb_convert",
     # "//ydb/library/aclib",
     # "//ydb/library/actors/interconnect",  # peerdir only

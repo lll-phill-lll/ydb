@@ -51,7 +51,7 @@ library("viewer") {
     "//ydb/core/kqp/proxy_service",  # peerdir only
     "//ydb/core/kqp/script_executions/table_queries",
     # "//ydb/core/mon",
-    "//ydb/core/path_aliasing",
+    "//ydb/core/path_aliasing",  # peerdir only
     # "//ydb/core/persqueue/events",
     "//ydb/core/persqueue/public",
     # "//ydb/core/persqueue/public/partition_key_range",

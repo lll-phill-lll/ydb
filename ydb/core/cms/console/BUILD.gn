@@ -40,6 +40,7 @@ library("console") {
     "//ydb/core/config/validation",
     "//ydb/core/mon",
     # "//ydb/core/node_whiteboard",
+    "//ydb/core/path_aliasing",
     "//ydb/core/protos/schemeshard",
     # "//ydb/core/util",
     "//ydb/library/actors/http",
