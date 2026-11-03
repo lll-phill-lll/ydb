@@ -4,6 +4,7 @@ unittest_executable("ut") {
     "//library/cpp/http/simple",
     "//library/cpp/testing/unittest",
     "//ydb/core/base",
+    "//ydb/core/client/server",
     "//ydb/core/mon",
     "//ydb/core/mon:ut_utils",
     "//ydb/core/testlib",
