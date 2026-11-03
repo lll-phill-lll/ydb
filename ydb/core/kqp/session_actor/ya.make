@@ -12,6 +12,7 @@ SRCS(
     kqp_worker_common.cpp  # gn: worker_common
 )
 # gn: worker_common headers kqp_worker_common.h kqp_worker_settings.h
+# gn: worker_common peerdir ydb/core/kqp/query_data
 
 PEERDIR(
     ydb/core/kqp/tracing

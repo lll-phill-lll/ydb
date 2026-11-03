@@ -86,6 +86,7 @@ library("worker_common") {
   ]
 
   deps = [
+    "//ydb/core/kqp/query_data",  # peerdir only
     # "//ydb/core/ydb_convert",
     "//ydb/library/security",
     # "//yql/essentials/public/issue",

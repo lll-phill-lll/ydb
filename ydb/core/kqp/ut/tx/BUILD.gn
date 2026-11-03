@@ -16,13 +16,18 @@ unittest_executable("tx") {
     "//ydb/core/protos/schemeshard",
     "//ydb/core/scheme",
     "//ydb/core/testlib",
+    "//ydb/core/testlib/actors",
+    "//ydb/core/tx",
     "//ydb/core/tx/columnshard/hooks/abstract",
     "//ydb/core/tx/columnshard/hooks/testing",
     "//ydb/core/tx/data_events",
     "//ydb/core/tx/datashard",
     "//ydb/core/tx/schemeshard",
     "//ydb/core/tx/tx_proxy:public",
+    "//ydb/library/actors/core",
     "//ydb/public/sdk/cpp/src/client/proto",
+    "//ydb/public/sdk/cpp/src/client/query",
+    "//ydb/public/sdk/cpp/src/client/scheme",
     "//ydb/public/sdk/cpp/src/client/table",
     "//ydb/public/sdk/cpp/src/client/topic",
     "//yql/essentials/core/services/mounts",
@@ -45,6 +50,7 @@ unittest_executable("tx") {
     "kqp_snapshot_isolation_ut.cpp",
     "kqp_tx_commit_timestamp_cdc_ut.cpp",
     "kqp_tx_ut.cpp",
+    "kqp_unsafe_truncate_ut.cpp",
   ]
 
   include_dirs = [

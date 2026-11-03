@@ -61,6 +61,7 @@ library("executer_actor") {
     # "//ydb/core/scheme",
     # "//ydb/core/sys_view/common",  # peerdir only
     # "//ydb/core/tx/columnshard",
+    # "//ydb/core/tx/data_events",
     "//ydb/core/tx/data_events/common",
     # "//ydb/core/tx/datashard",
     "//ydb/core/tx/datashard:range_ops",
@@ -115,6 +116,7 @@ library("executer_actor") {
     "kqp_table_resolver.cpp",
     "kqp_tasks_graph.cpp",
     "kqp_tasks_validate.cpp",
+    "kqp_unsafe_truncate_executer.cpp",
     "max_tasks_graph.cpp",
     "shard_key_ranges.cpp",
   ]
