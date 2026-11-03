@@ -1,8 +1,10 @@
 unittest_executable("ut_stream_creator") {
   deps = [
     "//library/cpp/testing/unittest",
+    "//ydb/core/testlib/basics",
     "//ydb/core/tx/replication/controller",
     "//ydb/core/tx/replication/ut_helpers",
+    "//ydb/public/api/protos",
   ]
 
   sources = [ "//ydb/core/tx/replication/controller/stream_creator_ut.cpp" ]
