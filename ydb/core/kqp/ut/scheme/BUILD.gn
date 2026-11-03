@@ -26,6 +26,7 @@ unittest_executable("scheme") {
     "//ydb/core/tx/columnshard/test_helper",
     "//ydb/core/tx/datashard",
     "//ydb/core/tx/tx_proxy:public",
+    "//ydb/library/yql/udfs/common/knn",  # peerdir only
     "//ydb/library/yql/utils/actor_log",
     "//ydb/public/api/protos",
     "//ydb/public/lib/yson_value",

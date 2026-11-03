@@ -7,6 +7,7 @@ unittest_executable("ut_base") {
     "//ydb/core/kqp/ut/common",  # peerdir only
     "//ydb/core/protos",
     "//ydb/core/protos/schemeshard",
+    "//ydb/core/testlib/actors",
     "//ydb/core/testlib/pg",  # peerdir only
     "//ydb/core/tx",  # peerdir only
     "//ydb/core/tx/schemeshard",
