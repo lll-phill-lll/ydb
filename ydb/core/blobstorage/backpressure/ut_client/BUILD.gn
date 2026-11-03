@@ -10,7 +10,6 @@ unittest_executable("ut_client") {
     "//ydb/core/tx/scheme_board",  # peerdir only
     "//ydb/core/util/actorsys_test",
     "//ydb/library/actors/core",
-    "//ydb/library/actors/interconnect",  # peerdir only
     "//yql/essentials/public/udf/service/stub",  # peerdir only
   ]
 

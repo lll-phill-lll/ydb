@@ -14,7 +14,6 @@ unittest_executable("ut_group") {
     "//ydb/core/util",  # peerdir only
     "//ydb/core/util/actorsys_test",
     "//ydb/library/actors/core",
-    "//ydb/library/actors/interconnect",  # peerdir only
   ]
 
   sources = [ "main.cpp" ]
