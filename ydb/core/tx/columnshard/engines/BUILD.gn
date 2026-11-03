@@ -35,6 +35,7 @@ library("engines") {
 
   deps = [
     # "//contrib/libs/apache/arrow",  # peerdir only
+    # "//contrib/libs/protobuf",
     "//library/cpp/protobuf/json",
     # "//library/cpp/time_provider",
     # "//ydb/core/formats",  # peerdir only
