@@ -1,0 +1,11 @@
+library("purecalc") {
+  public_deps = [
+    "//yql/essentials/public/purecalc/common",
+  ]
+
+  deps = [
+    # "//yql/essentials/public/udf/service/exception_policy",  # link slot
+  ]
+
+  sources = [ "purecalc.cpp" ]
+}
