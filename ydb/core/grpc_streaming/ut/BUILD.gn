@@ -6,6 +6,8 @@ unittest_executable("ut") {
     "//ydb/core/grpc_streaming/ut/grpc",
     "//ydb/core/testlib",
     "//ydb/core/testlib/default",  # peerdir only
+    "//ydb/library/grpc/server",
+    "//ydb/library/testlib/common",
     "//ydb/public/sdk/cpp/src/library/grpc/client",  # peerdir only
   ]
 
