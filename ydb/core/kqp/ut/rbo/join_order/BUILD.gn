@@ -1,0 +1,30 @@
+unittest_executable("join_order") {
+  deps = [
+    "//library/cpp/json",
+    "//ydb/core/kqp",  # peerdir only
+    "//ydb/core/kqp/ut/common",
+    "//yql/essentials/parser/pg_wrapper",  # peerdir only
+    "//yql/essentials/public/langver",
+    "//yql/essentials/sql/pg",  # peerdir only
+  ]
+
+  sources = [ "//ydb/core/kqp/ut/rbo/kqp_join_order_ut.cpp" ]
+
+  include_dirs = [
+    "//ydb/core/kqp",  # peerdir only
+  ]
+
+  data = [ "//ydb/core/kqp/ut/rbo/data/" ]
+
+  link_select = [
+    "YqlServicePolicy=exception_policy",
+    "allocator=tcmalloc",
+    "minikql_codegen=llvm16",
+    "retro_spans=spans",
+    "topic_rpc=persqueue_v1",
+    "wasm=engine",
+    "yql_pg_runtime=pg_wrapper",
+    "yql_pg_sql_translator=pg",
+    "yt_codegen=llvm16",
+  ]
+}
