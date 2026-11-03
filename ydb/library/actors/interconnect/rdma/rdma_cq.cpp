@@ -21,19 +21,19 @@ public:
         : TSimpleCqBase(as, sz, c, true)
     {}
 
-    int Init(const TRdmaCtx* ctx, const TRdmaRuntimeParams& params, std::shared_ptr<IMemPool> memPool) noexcept {
-        return TSimpleCqBase::Init(ctx, params, std::move(memPool), nullptr);
+    int Init(const TRdmaCtx* ctx, const TRdmaRuntimeParams& params, std::shared_ptr<IMemPool> memPool, IQpCache::TPtr qpCache) noexcept {
+        return TSimpleCqBase::Init(ctx, params, std::move(memPool), nullptr, qpCache);
     }
 
     virtual ~TSimpleCq() {
-        // For simple polling mode CQ, we just can destroy ibv CQ without any issues just aftre joining to the thread
+        // Stop the polling thread before releasing this wrapper's verbs-resource reference.
         Cont.store(false, std::memory_order_relaxed);
         if (Thread.Running()) {
             Thread.Join();
         }
 
         DrainWaiters();
-        Y_UNUSED(DestroyCq());
+        DrainQpCache();
     }
 };
 
@@ -43,18 +43,18 @@ public:
         : TSimpleCqBase(as, sz, c, false)
     {}
 
-    int Init(const TRdmaCtx* ctx, const TRdmaRuntimeParams& params, std::shared_ptr<IMemPool> memPool) noexcept {
-        CompChannel = ibv_create_comp_channel(ctx->GetContext());
-        if (!CompChannel) {
+    int Init(const TRdmaCtx* ctx, const TRdmaRuntimeParams& params, std::shared_ptr<IMemPool> memPool, IQpCache::TPtr qpCache) noexcept {
+        VerbsResources->CompChannel = ibv_create_comp_channel(ctx->GetContext());
+        if (!VerbsResources->CompChannel) {
             return errno;
         }
 
-        int err = TSimpleCqBase::Init(ctx, params, std::move(memPool), CompChannel);
+        int err = TSimpleCqBase::Init(ctx, params, std::move(memPool), VerbsResources->CompChannel, qpCache);
         if (err) {
             return err;
         }
 
-        err = ibv_req_notify_cq(Cq, 0);
+        err = ibv_req_notify_cq(VerbsResources->Cq, 0);
         if (err) {
             return errno;
         }
@@ -71,7 +71,7 @@ public:
         struct ibv_cq *evCq = nullptr;
         void *evCtx = nullptr;
 
-        int err = ibv_get_cq_event(CompChannel, &evCq, &evCtx);
+        int err = ibv_get_cq_event(VerbsResources->CompChannel, &evCq, &evCtx);
         if (err) {
             if (errno != EINTR) {
                 DoNotifyErr();
@@ -107,31 +107,22 @@ public:
         // so in this case repeat send signal until cq thread finished
         if (Thread.Running()) {
             WakeUntilFinished();
-            // 4. As usual, join and destroy CQ
+            // 4. Join the thread. Native verbs resources may outlive this wrapper
+            // while associated QPs still exist.
             Thread.Join();
         }
 
         DrainWaiters();
-        const int destroyErr = DestroyCq();
-
-        // 5. Destroy completion event channel
-        if (!destroyErr && CompChannel && ibv_destroy_comp_channel(CompChannel)) {
-            // https://www.rdmamojo.com/2012/10/26/ibv_destroy_comp_channel
-            Cerr << "Unable to destroy completion event channel, errno: " << errno << Endl;
-            // it should not happen, but if it happens it is not a fatal error for production
-            Y_DEBUG_ABORT_UNLESS(false);
-        }
+        DrainQpCache();
     }
-private:
-    ibv_comp_channel* CompChannel = nullptr;
 };
 
-ICq::TPtr CreateSimpleCq(const TRdmaCtx* ctx, NActors::TActorSystem* as, TRdmaRuntimeParams runtimeParams, std::shared_ptr<IMemPool> memPool, NMonitoring::TDynamicCounters* counter) noexcept {
-    return CreateCq<TSimpleCq>(ctx, as, runtimeParams, std::move(memPool), counter);
+ICq::TPtr CreateSimpleCq(const TRdmaCtx* ctx, NActors::TActorSystem* as, TRdmaRuntimeParams runtimeParams, std::shared_ptr<IMemPool> memPool, NMonitoring::TDynamicCounters* counter, IQpCache::TPtr qpCache, TCqDestroyer cqDestroyer) noexcept {
+    return CreateCq<TSimpleCq>(ctx, as, runtimeParams, std::move(memPool), counter, std::move(qpCache), std::move(cqDestroyer));
 }
 
-ICq::TPtr CreateSimpleEventDrivenCq(const TRdmaCtx* ctx, NActors::TActorSystem* as, TRdmaRuntimeParams runtimeParams, std::shared_ptr<IMemPool> memPool, NMonitoring::TDynamicCounters* counter) noexcept {
-    return CreateCq<TSimpleEventDrivenCq>(ctx, as, runtimeParams, std::move(memPool), counter);
+ICq::TPtr CreateSimpleEventDrivenCq(const TRdmaCtx* ctx, NActors::TActorSystem* as, TRdmaRuntimeParams runtimeParams, std::shared_ptr<IMemPool> memPool, NMonitoring::TDynamicCounters* counter, IQpCache::TPtr qpCache, TCqDestroyer cqDestroyer) noexcept {
+    return CreateCq<TSimpleEventDrivenCq>(ctx, as, runtimeParams, std::move(memPool), counter, std::move(qpCache), std::move(cqDestroyer));
 }
 
 } // namespace NInterconnect::NRdma

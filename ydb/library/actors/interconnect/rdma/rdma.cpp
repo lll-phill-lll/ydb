@@ -45,6 +45,7 @@ TQueuePair::~TQueuePair() {
 
 int TQueuePair::Init(TRdmaCtx* ctx, ICq* icq, int maxWr) noexcept {
     Ctx = ctx;
+    VerbsResources = icq->GetVerbsResources();
     ibv_cq* cq = icq->GetCq();
     Y_ABORT_UNLESS(cq);
     const ibv_device_attr& attr = ctx->GetDevAttr();
@@ -74,6 +75,7 @@ int TQueuePair::Init(TRdmaCtx* ctx, ICq* icq, int maxWr) noexcept {
     if (Qp) {
         return 0;
     } else {
+        VerbsResources.reset();
         return errno;
     }
 }
