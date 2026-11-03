@@ -5,6 +5,7 @@ unittest_executable("ut_stats") {
     "//ydb/core/cms",  # peerdir only
     "//ydb/core/cms/console",
     "//ydb/core/protos",
+    "//ydb/core/testlib/actors",
     "//ydb/core/testlib/default",  # peerdir only
     "//ydb/core/tx",  # peerdir only
     "//ydb/core/tx/datashard",
@@ -12,6 +13,7 @@ unittest_executable("ut_stats") {
     "//ydb/core/tx/schemeshard",
     "//ydb/core/tx/schemeshard/ut_helpers",
     "//ydb/core/wrappers:ut_helpers",  # peerdir only
+    "//ydb/public/lib/value",
   ]
 
   sources = [
