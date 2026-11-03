@@ -30,6 +30,7 @@ unittest_executable("ut_change_exchange") {
     "//ydb/public/sdk/cpp/src/client/persqueue_public",
     "//ydb/public/sdk/cpp/src/client/result",
     "//ydb/public/sdk/cpp/src/client/topic",
+    "//ydb/public/sdk/cpp/src/library/operation_id",
     "//yql/essentials/public/udf/service/exception_policy",  # peerdir only
   ]
 
