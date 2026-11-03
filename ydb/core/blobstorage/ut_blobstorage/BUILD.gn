@@ -99,6 +99,7 @@ unittest_executable("ut_blobstorage") {
     "validation.cpp",
     "vdisk_malfunction.cpp",
     "virtual_group.cpp",
+    "vrestore_part.cpp",
   ]
 
   link_select = [
