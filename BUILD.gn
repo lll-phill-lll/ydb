@@ -318,6 +318,7 @@ group("tests") {
         "//ydb/core/kqp/ut/perf",
         "//ydb/core/kqp/ut/query",
         "//ydb/core/kqp/ut/rbo",
+        "//ydb/core/kqp/ut/rbo/effects",
         "//ydb/core/kqp/ut/rbo/join_order",
         "//ydb/core/kqp/ut/runtime",
         "//ydb/core/kqp/ut/scan",
