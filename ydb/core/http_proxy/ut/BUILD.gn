@@ -45,6 +45,7 @@ unittest_executable("ut") {
   deps = [
     ":ut_resources",
     "//contrib/restricted/nlohmann_json",  # peerdir only
+    "//library/cpp/cgiparam",
     "//ydb/core/base",  # peerdir only
     "//ydb/core/http_proxy/ut/datastreams_fixture",  # peerdir only
     "//ydb/core/testlib/default",  # peerdir only
@@ -63,6 +64,7 @@ unittest_executable("ut") {
   sources = [
     "http_ut.cpp",
     "json_proto_conversion_ut.cpp",
+    "sqs_xml_receipt_ut.cpp",
     "utils_ut.cpp",
   ]
 
