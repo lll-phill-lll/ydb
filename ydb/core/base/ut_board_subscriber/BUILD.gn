@@ -3,6 +3,7 @@ unittest_executable("ut_board_subscriber") {
     "//library/cpp/testing/unittest",
     "//ydb/core/base",
     "//ydb/core/scheme",
+    "//ydb/core/testlib/actors",
     "//ydb/core/testlib/basics",
     "//ydb/core/testlib/basics:default",  # peerdir only
     "//ydb/library/actors/core",
