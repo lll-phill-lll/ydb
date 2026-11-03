@@ -73,7 +73,11 @@ The first run takes the bench and other settings, they are remembered in
 
 Defaults: the work tree is the one of the cwd, the build dir <root>/out/gn,
 the state <git dir of the work tree>/gn-follow (outside the work tree, git
-does not see it), the bench build dir <bench root>/out/gn.
+does not see it), the bench build dir <bench root>/out/gn, nice 10.
+
+The whole run is niced: `--nice N` raises the niceness of this process (default
+10, 0 off), and every command it starts (the generator, gn gen, ninja, ya make)
+inherits it.
 
 Without --run it only shows the status and changes nothing: whether a
 run is going on, the work tree, the upstream, where and why the last run
@@ -1162,6 +1166,7 @@ CONFIG_DEFAULTS = {
     "upstream": "origin/main",
     "env": [],
     "jobs": None,
+    "nice": 10,                 # niceness of the run and everything it starts (0: off)
     "targets": DEFAULT_TARGETS,
     "gen_args": DEFAULT_GEN_ARGS,
     "push": None,
@@ -1242,6 +1247,9 @@ def main():
     c.add_argument("--env", action="append", metavar="NAME=VALUE",
                    help="for gn gen and ninja, e.g. the compiler cache's (repeatable)")
     c.add_argument("-j", "--jobs", type=int, help="ninja -j")
+    c.add_argument("--nice", type=int, metavar="N",
+                   help="niceness of the run and every command it starts (default: %d, 0: off)"
+                        % CONFIG_DEFAULTS["nice"])
     c.add_argument("--targets", nargs="+", help="default: %s" % " ".join(DEFAULT_TARGETS))
     c.add_argument("--gen-args", help="of yamake2gn.py (default: %s)" % DEFAULT_GEN_ARGS)
     c.add_argument("--push", metavar="REMOTE", help="push the branch after every step")
@@ -1281,6 +1289,10 @@ def main():
         ap.error("--bench needs --bench-root")
     if args.bench and not args.ya_out:
         ap.error("--bench-root needs --ya-out")
+    if args.nice and args.nice < 0:
+        ap.error("--nice must be 0 or more")
+    if args.nice:
+        os.nice(args.nice)      # the children inherit it: the build runs at low priority
     lock = open(os.path.join(args.state, "lock"), "w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
