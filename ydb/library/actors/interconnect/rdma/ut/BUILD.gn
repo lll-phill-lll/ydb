@@ -1,6 +1,7 @@
 gtest_executable("ut") {
   deps = [
     "//contrib/libs/ibdrv",
+    "//library/cpp/monlib/dynamic_counters",
     "//library/cpp/testing/gtest",
     "//ydb/library/actors/core",
     "//ydb/library/actors/interconnect",
@@ -16,6 +17,7 @@ gtest_executable("ut") {
   sources = [
     "allocator_ut.cpp",
     "ibv_ut.cpp",
+    "qp_cache_ut.cpp",
     "rdma_low_ut.cpp",
     "utils.cpp",
   ]
