@@ -1906,8 +1906,6 @@ def real_path(base, name):
     return name if os.path.isabs(name) else os.path.join(_ROOT, name)
 
 
-# clang resource headers (immintrin.h and the rest of lib/clang/<ver>/include)
-# show up in a trace as an absolute path of the compiler that produced it
 _CLANG_RESOURCE_RE = re.compile(r"/lib/clang/\d+(?:\.\d+)*/include/(.+)$")
 
 
@@ -1917,8 +1915,6 @@ def spelling(base, name):
         return "<%s>" % name[len(_LIBCXX):]
     if name.startswith(_GEN):
         return '"%s"' % name[len(_GEN):]
-    # Include a clang builtin by name. An absolute path would pin the PCH to
-    # one machine's compiler (clang_bin_path / ya tool dir).
     clang = _CLANG_RESOURCE_RE.search(name)
     if clang:
         return "<%s>" % clang.group(1)
