@@ -17,7 +17,6 @@ library("tablet_flat") {
     "//ydb/core/tablet_flat/protos",
     "//ydb/core/util",
     # "//ydb/library/actors/core",
-    "//ydb/library/actors/protos",
     "//ydb/library/actors/util",
     "//ydb/library/actors/wilson",
     "//ydb/library/services",
@@ -67,7 +66,6 @@ library("tablet_flat") {
     "flat_exec_commit_mgr.cpp",
     "flat_exec_seat.cpp",
     "flat_executor.cpp",
-    "flat_executor.proto",
     "flat_executor_backup.cpp",
     "flat_executor_backup_common.cpp",
     "flat_executor_bootlogic.cpp",
@@ -129,10 +127,5 @@ library("tablet_flat") {
     "flat_scan_iface.h",
     "shared_cache_events.h",
     "shared_cache_s3fifo.h",
-  ]
-
-  proto_imports = [
-    "//ydb/core/protos",
-    "//ydb/library/actors/protos",
   ]
 }

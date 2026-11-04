@@ -24,6 +24,7 @@ library("lib") {
     # "//library/cpp/protobuf/json",  # peerdir only
     # "//ydb/core/blobstorage/crypto",
     # "//ydb/core/scheme",
+    # "//ydb/core/tablet_flat/protos",
     # "//yql/essentials/public/udf/service/stub",  # link slot
     # "//yql/essentials/sql/pg_dummy",  # link slot
   ]
