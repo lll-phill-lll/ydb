@@ -10,6 +10,7 @@ library("events") {
     "//ydb/core/kqp/common/simple",
     "//ydb/core/protos",
     # "//ydb/core/resource_pools",
+    # "//ydb/core/scheme",
     # "//ydb/library/aclib",
     # "//ydb/library/actors/core",
     "//ydb/library/yql/dq/actors",
@@ -20,7 +21,6 @@ library("events") {
 
   deps = [
     # "//ydb/core/base",  # peerdir only
-    # "//ydb/core/scheme",  # peerdir only
   ]
 
   sources = [
