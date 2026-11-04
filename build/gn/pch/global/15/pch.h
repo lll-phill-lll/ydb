@@ -1,5 +1,5 @@
 // written by build/gn/scripts/pch_update.py
-#include "/home/ilezhankin/.ya/tools/v4/13899442575/lib/clang/20/include/immintrin.h"
+#include <immintrin.h>
 #include <condition_variable>
 #include <expected>
 #include <future>

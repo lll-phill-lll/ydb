@@ -1906,12 +1906,18 @@ def real_path(base, name):
     return name if os.path.isabs(name) else os.path.join(_ROOT, name)
 
 
+_CLANG_RESOURCE_RE = re.compile(r"/lib/clang/\d+(?:\.\d+)*/include/(.+)$")
+
+
 def spelling(base, name):
     """How the PCH includes a header of the traces."""
     if name.startswith(_LIBCXX):
         return "<%s>" % name[len(_LIBCXX):]
     if name.startswith(_GEN):
         return '"%s"' % name[len(_GEN):]
+    clang = _CLANG_RESOURCE_RE.search(name)
+    if clang:
+        return "<%s>" % clang.group(1)
     if os.path.isabs(name) or name.startswith("<"):
         return '"%s"' % real_path(base, name)
     return '"%s"' % name
