@@ -5,6 +5,7 @@ config("public_config") {
         "include/readpassphrase",
         "memfd_create",
         "random",
+        "reallocarray",
     ]
 }
 
@@ -23,6 +24,9 @@ system_library("libc_compat") {
         "readpassphrase.c",
         "strlcat.c",
         "strlcpy.c",
+        "explicit_bzero.c",
+        "memfd_create/memfd_create.c",
+        "reallocarray/reallocarray.c",
     ]
 
     public_configs = [ ":public_config" ]

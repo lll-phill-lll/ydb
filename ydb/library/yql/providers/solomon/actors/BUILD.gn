@@ -18,7 +18,7 @@ library("actors") {
     "//library/cpp/json/easy_parse",
     "//library/cpp/monlib/encode/json",
     "//library/cpp/protobuf/util",
-    # "//library/cpp/retry",
+    "//library/cpp/retry",
     "//ydb/library/services",
     # "//ydb/library/yql/dq/actors/common",
     "//ydb/library/yql/dq/actors/protos",

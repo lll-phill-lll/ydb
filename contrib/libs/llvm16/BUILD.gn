@@ -26,6 +26,7 @@ group("llvm16") {
         "//contrib/libs/llvm16/lib/Passes",
         "//contrib/libs/llvm16/lib/Support",
         "//contrib/libs/llvm16/lib/TargetParser",
+        "//contrib/libs/llvm16/lib/Target",
         "//contrib/libs/llvm16/lib/Target/X86",
         "//contrib/libs/llvm16/lib/Target/X86/AsmParser",
         "//contrib/libs/llvm16/lib/Target/X86/Disassembler",

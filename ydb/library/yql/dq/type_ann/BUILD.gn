@@ -1,6 +1,6 @@
 library("type_ann") {
   public_deps = [
-    # "//ydb/library/yql/dq/expr_nodes",
+    "//ydb/library/yql/dq/expr_nodes",
     "//yql/essentials/core",
   ]
 

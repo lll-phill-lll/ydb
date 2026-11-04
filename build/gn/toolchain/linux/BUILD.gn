@@ -14,7 +14,7 @@ template("clang_toolchain") {
       ld = "clang++-18 -fuse-ld=/usr/bin/ld.lld-18"
     }
 
-    sysroot = "--sysroot=/home/ilezhankin/.ya/tools/v4/243881345"
+    sysroot = "--sysroot=" + getenv("HOME") + "/.ya/tools/v4/243881345"
 
     _abs_root = string_replace(string_replace(rebase_path("//.") + "/", "/./", "/"), "//", "/")
     _abs_build = string_replace(string_replace(rebase_path(root_build_dir) + "/", "/./", "/"), "//", "/")
@@ -83,7 +83,7 @@ template("clang_toolchain") {
       tocname = sofile + ".TOC"
       temporary_tocname = tocname + ".tmp"
 
-      link_command = "$ld -shared {{ldflags}} -o $sofile -Wl,-soname=$soname -Wl,--whole-archive {{inputs}} -Wl,--no-whole-archive {{solibs}} {{libs}}"
+      link_command = "$ld $sysroot -shared {{ldflags}} -o $sofile -Wl,-soname=$soname -Wl,--whole-archive {{inputs}} -Wl,--no-whole-archive {{solibs}} {{libs}}"
       toc_command = "{ readelf -d $sofile | grep SONAME ; nm -gD -f p $sofile | cut -f1-2 -d' '; } > $temporary_tocname"
       replace_command = "if ! cmp -s $temporary_tocname $tocname; then mv $temporary_tocname $tocname; fi"
 
@@ -105,7 +105,7 @@ template("clang_toolchain") {
 
     tool("link") {
       outfile = "{{root_out_dir}}/{{target_output_name}}{{output_extension}}"
-      command = "$ld -rdynamic {{ldflags}} -o $outfile -Wl,--whole-archive -Wl,--start-group {{inputs}} {{solibs}} -Wl,--end-group -Wl,--no-whole-archive {{libs}}"
+      command = "$ld $sysroot -rdynamic {{ldflags}} -o $outfile -Wl,--whole-archive -Wl,--start-group {{inputs}} {{solibs}} -Wl,--end-group -Wl,--no-whole-archive {{libs}}"
       description = "LINK $outfile"
       outputs = [
         outfile,

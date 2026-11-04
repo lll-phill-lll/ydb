@@ -65,6 +65,28 @@ config("base") {
         "-Wno-parentheses",
         "-Wno-vla-cxx-extension",
 
+        # clang 18+ warnings that ya turns off in build/conf/compilers/gnu_compiler.conf
+        "-Wno-array-parameter",
+        "-Wno-deprecate-lax-vec-conv-all",
+        "-Wno-unqualified-std-cast-call",
+        "-Wno-unused-but-set-parameter",
+        "-Wno-implicit-function-declaration",
+        "-Wno-int-conversion",
+        "-Wno-incompatible-function-pointer-types",
+        "-Wno-address-of-packed-member",
+        "-Wno-deprecated-this-capture",
+        "-Wno-missing-designated-field-initializers",
+        "-Wno-invalid-offsetof",
+
+        # clang 20+ warnings that ya turns off in the same conf
+        "-Wno-alias-template-in-declaration-name",
+        "-Wno-cast-function-type-mismatch",
+        "-Wno-explicit-specialization-storage-class",
+        "-Wno-extraneous-template-head",
+        "-Wno-missing-template-arg-list-after-template-kw",
+        "-Wno-nontrivial-memcall",
+        "-Wno-strict-primary-template-shadow",
+
         # every function and object in its own section, for --gc-sections
         "-ffunction-sections",
         "-fdata-sections",

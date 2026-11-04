@@ -4,7 +4,10 @@ template("contrib_tool") {
 
         # Override default deps
         deps = []
-        deps = platform_deps + [ "//contrib/libs/cxxsupp/libcxx" ]
+        deps = platform_deps + [
+            "//contrib/libs/cxxsupp/libcxx",
+            "//contrib/libs/libc_compat",
+        ]
         if (defined(invoker.deps)) {
             deps += invoker.deps
         }
@@ -86,7 +89,10 @@ template("contrib_library") {
 
         # Override default deps
         deps = []
-        deps = platform_deps + [ "//contrib/libs/cxxsupp/libcxx" ]
+        deps = platform_deps + [
+            "//contrib/libs/cxxsupp/libcxx",
+            "//contrib/libs/libc_compat",
+        ]
         if (defined(invoker.deps)) {
             deps += invoker.deps
         }

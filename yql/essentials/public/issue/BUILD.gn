@@ -1,6 +1,7 @@
 library("issue") {
   public_deps = [
     "//contrib/libs/protobuf",
+    "//library/cpp/containers/cow_string",
     "//library/cpp/resource",
     "//yql/essentials/public/issue/protos",
     "//yql/essentials/utils",

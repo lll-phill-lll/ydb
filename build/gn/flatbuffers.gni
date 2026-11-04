@@ -47,12 +47,14 @@ template("flatbuffers_library") {
     }
 
     source_set(target_name) {
-        public_deps = [ "//contrib/libs/flatbuffers" ]
+        public_deps = [
+            ":$_gen_target",
+            "//contrib/libs/flatbuffers",
+        ]
 
-        deps = []
-        deps += [ ":$_gen_target" ]
-
-        sources = get_target_outputs(":$_gen_target")
+        # The headers are the action outputs. A private dep on the action only
+        # orders the link; public_deps makes dependents compile after flatc.
+        public = get_target_outputs(":$_gen_target")
 
         public_configs = [ ":public_config" ]
     }
